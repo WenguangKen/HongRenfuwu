@@ -170,18 +170,18 @@ public class GlobalInfluencerAgentTools {
             "查询订单是否存在并打开对应订单页筛选；可回答订单绑定了哪个红人。"
                     + "用户问单号、订单、和哪个红人绑定、关联红人、样品单、红人订单、转化订单时必须调用。"
                     + "orderType: sample=红人订单/样品单(默认)、conversion=转化订单、commission=分佣订单。"
-                    + "至少传 orderNo 或 shopifyOrderId 或 influencerName 或 discountCode 之一。")
+                    + "至少传 orderNo 或 eccangOrderId 或 influencerName 或 discountCode 之一。")
     @RateLimiter(name = "aiSearchLimiter")
     public String searchOrders(
             @ToolMemoryId String sessionId,
             String orderType,
             String orderNo,
-            String shopifyOrderId,
+            String eccangOrderId,
             String influencerName,
             String discountCode)
             throws Exception {
         CopilotOrderSearchService.OrderSearchResult result =
-                orderSearchService.search(sessionId, orderType, orderNo, shopifyOrderId, influencerName, discountCode);
+                orderSearchService.search(sessionId, orderType, orderNo, eccangOrderId, influencerName, discountCode);
         return orderSearchService.buildToolReply(result);
     }
 

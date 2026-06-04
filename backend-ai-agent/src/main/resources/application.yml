@@ -82,8 +82,8 @@ services:
     url: ${INFLUENCER_SERVICE_URL:http://localhost:8082/influencer-api}
   backend-mail:
     url: ${MAIL_SERVICE_URL:http://localhost:8086/mail-api}
-  backend-shopify:
-    url: ${SHOPIFY_SERVICE_URL:http://localhost:8081/api/shopify}
+  backend-eccang:
+    url: ${ECCANG_SERVICE_URL:http://localhost:8081/api/eccang}
 
 management:
   endpoints:

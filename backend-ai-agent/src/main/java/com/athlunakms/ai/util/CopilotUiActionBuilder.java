@@ -129,7 +129,7 @@ public final class CopilotUiActionBuilder {
     public static String buildApplyOrderFilter(
             String pagePath,
             String orderNo,
-            String shopifyOrderId,
+            String eccangOrderId,
             String influencerName,
             String discountCode,
             int resultCount)
@@ -139,8 +139,8 @@ public final class CopilotUiActionBuilder {
         if (StringUtils.hasText(orderNo)) {
             data.put("orderNo", orderNo.trim());
         }
-        if (StringUtils.hasText(shopifyOrderId)) {
-            data.put("shopifyOrderId", shopifyOrderId.trim());
+        if (StringUtils.hasText(eccangOrderId)) {
+            data.put("eccangOrderId", eccangOrderId.trim());
         }
         if (StringUtils.hasText(influencerName)) {
             data.put("influencer", influencerName.trim());
@@ -232,7 +232,7 @@ public final class CopilotUiActionBuilder {
             case "system_tag", "标签管理" -> "/system/tag";
             case "system_rule", "规则设置", "规则管理" -> "/system/rule";
             case "system_permission", "权限管理", "权限列表" -> "/system/permission";
-            case "system_shopify", "shopify", "店铺设置" -> "/system/shopify";
+            case "system_eccang", "eccang", "店铺设置" -> "/system/eccang";
             case "system_webhook", "webhook" -> "/system/webhook";
             case "system_storage", "存储配置", "存储管理" -> "/system/storage";
             default -> "/influencer/list";
@@ -261,7 +261,7 @@ public final class CopilotUiActionBuilder {
             case "/system/tag" -> "标签管理";
             case "/system/rule" -> "规则设置";
             case "/system/permission" -> "权限列表";
-            case "/system/shopify" -> "Shopify 设置";
+            case "/system/eccang" -> "Eccang 设置";
             case "/system/webhook" -> "Webhook 设置";
             case "/system/storage" -> "存储配置";
             default -> "红人列表";

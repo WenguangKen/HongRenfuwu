@@ -377,7 +377,7 @@ public class MailAiService {
         return sb.toString();
     }
 
-    /** 解析并规范化商品图 URL（兼容 image / mainImage 字段，Shopify CDN 加 width） */
+    /** 解析并规范化商品图 URL（兼容 image / mainImage 字段） */
     private static String resolveProductImageUrl(MailTemplateAiRequest.SampleProductItem p) {
         if (p == null) {
             return "";
@@ -392,11 +392,6 @@ public class MailAiService {
         }
         if (!url.startsWith("http")) {
             return "";
-        }
-        if (url.contains("cdn.shopify.com")) {
-            int q = url.indexOf('?');
-            String base = q >= 0 ? url.substring(0, q) : url;
-            return base + "?width=240";
         }
         return url;
     }

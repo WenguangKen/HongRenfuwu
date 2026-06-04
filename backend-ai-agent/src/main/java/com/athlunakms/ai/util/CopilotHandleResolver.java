@@ -129,7 +129,7 @@ public class CopilotHandleResolver {
                         && !w.equalsIgnoreCase("tiktok")
                         && !w.equalsIgnoreCase("instagram")
                         && !w.equalsIgnoreCase("youtube")
-                        && !w.equalsIgnoreCase("shopify")) {
+                        && !w.equalsIgnoreCase("eccang")) {
                     addHandle(seen, w);
                 }
             }
@@ -173,7 +173,7 @@ public class CopilotHandleResolver {
     /** 订单语境：不走 handle 预检，交给大模型 searchOrders */
     public static boolean orderRelatedQuestion(String message) {
         return message != null
-                && message.matches(".*(订单|order|单号|样品单|转化单|红人订单|交易号|shopify|绑定|关联红人).*");
+                && message.matches(".*(订单|order|单号|样品单|转化单|红人订单|交易号|eccang|绑定|关联红人).*");
     }
 
     public static boolean discountRelatedQuestion(String message) {

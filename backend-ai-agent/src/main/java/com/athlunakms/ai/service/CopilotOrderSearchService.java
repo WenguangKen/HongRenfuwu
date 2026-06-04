@@ -29,8 +29,8 @@ public class CopilotOrderSearchService {
     private final CopilotUiActionPublisher uiActionPublisher;
     private final ObjectMapper objectMapper;
 
-    @Value("${services.backend-shopify.url}")
-    private String shopifyServiceUrl;
+    @Value("${services.backend-eccang.url}")
+    private String eccangServiceUrl;
 
     public record OrderSearchResult(
             String orderType,
@@ -38,7 +38,7 @@ public class CopilotOrderSearchService {
             String pageLabel,
             int total,
             String orderNo,
-            String shopifyOrderId,
+            String eccangOrderId,
             String influencerName,
             String discountCode,
             String serviceError,
@@ -55,7 +55,7 @@ public class CopilotOrderSearchService {
             String sessionId,
             String orderType,
             String orderNo,
-            String shopifyOrderId,
+            String eccangOrderId,
             String influencerName,
             String discountCode)
             throws JsonProcessingException {
@@ -64,7 +64,7 @@ public class CopilotOrderSearchService {
         String pageLabel = pageLabel(pagePath);
 
         if (!StringUtils.hasText(orderNo)
-                && !StringUtils.hasText(shopifyOrderId)
+                && !StringUtils.hasText(eccangOrderId)
                 && !StringUtils.hasText(influencerName)
                 && !StringUtils.hasText(discountCode)) {
             return new OrderSearchResult(
@@ -84,8 +84,8 @@ public class CopilotOrderSearchService {
         if (StringUtils.hasText(orderNo)) {
             body.put("orderNo", orderNo.trim());
         }
-        if (StringUtils.hasText(shopifyOrderId)) {
-            body.put("shopifyOrderId", shopifyOrderId.trim());
+        if (StringUtils.hasText(eccangOrderId)) {
+            body.put("eccangOrderId", eccangOrderId.trim());
         }
         if (StringUtils.hasText(influencerName)) {
             body.put("influencerName", influencerName.trim());
@@ -100,7 +100,7 @@ public class CopilotOrderSearchService {
                         : "/v1/influencer-orders/sample/search";
 
         String url =
-                UriComponentsBuilder.fromHttpUrl(shopifyServiceUrl + searchPath)
+                UriComponentsBuilder.fromHttpUrl(eccangServiceUrl + searchPath)
                         .queryParam("page", 0)
                         .queryParam("size", 10)
                         .toUriString();
@@ -120,12 +120,12 @@ public class CopilotOrderSearchService {
             bound = extractBoundInfluencers(page);
         } catch (RestClientException e) {
             log.warn("订单检索失败 type={} orderNo={}", type, orderNo, e);
-            serviceError = "无法连接订单服务 (8081)，请确认 backend-shopify-integration 已启动。";
+            serviceError = "无法连接订单服务 (8081)，请确认 backend-eccang-integration 已启动。";
         }
 
         String actionJson =
                 CopilotUiActionBuilder.buildApplyOrderFilter(
-                        pagePath, orderNo, shopifyOrderId, influencerName, discountCode, total);
+                        pagePath, orderNo, eccangOrderId, influencerName, discountCode, total);
         uiActionPublisher.publish(sessionId, actionJson);
 
         return new OrderSearchResult(
@@ -134,7 +134,7 @@ public class CopilotOrderSearchService {
                 pageLabel,
                 total,
                 orderNo,
-                shopifyOrderId,
+                eccangOrderId,
                 influencerName,
                 discountCode,
                 serviceError,
@@ -258,8 +258,8 @@ public class CopilotOrderSearchService {
         if (StringUtils.hasText(r.orderNo())) {
             return "单号/交易号 " + r.orderNo();
         }
-        if (StringUtils.hasText(r.shopifyOrderId())) {
-            return "Shopify 单号 " + r.shopifyOrderId();
+        if (StringUtils.hasText(r.eccangOrderId())) {
+            return "Eccang 单号 " + r.eccangOrderId();
         }
         if (StringUtils.hasText(r.influencerName())) {
             return "关联红人 " + r.influencerName();
