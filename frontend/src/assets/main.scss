@@ -1,0 +1,309 @@
+/* Global Styles */
+@use '../styles/variables.scss' as *;
+@use '../styles/mixins.scss' as *;
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+  /* Lighter, cleaner background */
+  color: #1f1f1f;
+}
+
+#app {
+  height: 100vh;
+}
+
+/* 路由切换顶部进度条 — 用 scaleX 平滑推进，不做宽度脉冲 */
+.route-progress-bar {
+  --progress: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transform: scaleX(var(--progress));
+  transform-origin: left center;
+  background: linear-gradient(90deg, #60a5fa, #6366f1);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+
+  &.is-active {
+    opacity: 0.85;
+  }
+
+  &.is-done {
+    opacity: 0;
+    transition:
+      transform 0.2s ease-out,
+      opacity 0.35s ease;
+  }
+}
+
+/* Ant Design Overrides for High-End Light Theme */
+.ant-layout {
+  background: #f8f9fa;
+}
+
+.ant-card {
+  border-radius: 12px;
+  /* Softer rounded corners */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  /* Very subtle shadow */
+  border: none;
+  /* Remove harsh borders */
+}
+
+/* Refined Confirm Modal Styles */
+.refined-confirm-modal {
+  .ant-modal-content {
+    border-radius: 16px !important;
+    padding: 0 !important; /* Ant Design Confirm uses ant-modal-confirm-body padding */
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15) !important;
+    overflow: hidden;
+  }
+
+  .ant-modal-confirm-body {
+    padding: 32px 32px 24px 32px !important;
+    
+    .anticon {
+      font-size: 24px !important;
+      margin-right: 16px !important;
+      margin-top: 2px !important;
+    }
+
+    .ant-modal-confirm-title {
+      font-size: 18px !important;
+      font-weight: 600 !important;
+      color: #1e293b;
+    }
+
+    .ant-modal-confirm-content {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 8px;
+    }
+  }
+
+  .ant-modal-confirm-btns {
+    margin-top: 0 !important;
+    padding: 0 32px 32px 32px !important;
+    float: none !important;
+    text-align: right;
+
+    .ant-btn {
+      height: 38px;
+      padding: 0 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 14px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+      
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    .ant-btn-default {
+      border-color: #e2e8f0;
+      color: #64748b;
+      &:hover {
+        color: #475569;
+        border-color: #cbd5e1;
+      }
+    }
+    
+    .ant-btn-danger {
+      background: #ef4444 !important;
+      border-color: #ef4444 !important;
+      color: white !important; /* Force white text */
+      box-shadow: 0 2px 0 rgba(239, 68, 68, 0.1) !important;
+      
+      &:hover {
+        background: #dc2626 !important;
+        border-color: #dc2626 !important;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2) !important;
+      }
+    }
+  }
+}
+
+.ant-table-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  
+  /* Fix: Row Selection Background for Sticky/Fixed Columns */
+  .ant-table-tbody {
+    > tr.ant-table-row-selected {
+      background-color: #fff1f2 !important;
+      
+      > td {
+        background-color: #fff1f2 !important;
+        
+        &.ant-table-cell-fix-left,
+        &.ant-table-cell-fix-right {
+          background-color: #fff1f2 !important;
+        }
+      }
+      
+      &:hover {
+        background-color: #ffe4e6 !important;
+        
+        > td {
+          background-color: #ffe4e6 !important;
+          
+          &.ant-table-cell-fix-left,
+          &.ant-table-cell-fix-right {
+            background-color: #ffe4e6 !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Global Modal Styles Override */
+.ant-modal-mask {
+  backdrop-filter: blur(5px);
+  background-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+.ant-modal-content {
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  padding: 0 !important;
+  /* Reset padding to allow full-bleed headers */
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Default Modal Header Override (if not hidden) */
+.ant-modal-header {
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0 !important;
+  /* Fix potential double margin */
+}
+
+.ant-modal-title {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+
+
+/* Standardize Close Button */
+.ant-modal-close {
+  top: 12px;
+  right: 12px;
+}
+
+.ant-modal-close-x {
+  width: 32px;
+  height: 32px;
+}
+
+/* Premium Refined Modal Styles */
+.premium-refined-modal {
+  .ant-modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+    padding: 0 !important; /* Reset padding */
+  }
+  .ant-modal-body {
+     padding: 0;
+     flex: 1;
+     display: flex;
+     flex-direction: column;
+     overflow: hidden;
+  }
+  
+  .modal-body-container {
+    flex: 1;
+    min-height: 0;
+    max-height: calc(100vh - 400px);
+    overflow-y: auto;
+  }
+  
+  .ant-modal-close {
+    top: 18px; right: 18px; width: 32px; height: 32px; z-index: 1000;
+    color: #94a3b8; transition: all 0.2s;
+    &:hover { background: #f1f5f9; border-radius: 50%; color: #ef4444; transform: rotate(90deg); }
+  }
+}
+
+.glass-header-compact {
+  height: 68px; padding: 0 24px; display: flex; align-items: center;
+  background: #1e293b; border-bottom: 1px solid #334155;
+  
+  .header-main { display: flex; align-items: center; gap: 12px; }
+  .logo-box {
+    width: 32px; height: 32px; background: #6366f1; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    .logo-text { color: #fff; font-weight: 900; font-size: 11px; }
+  }
+  .title-meta {
+    .main-title { color: #fff; font-size: 15px; font-weight: 700; margin: 0; }
+    .sub-info {
+      display: flex; align-items: center; gap: 8px; margin-top: 2px;
+      font-size: 11px; font-weight: 600;
+      .badge { color: #818cf8; &.name { color: #94a3b8; } }
+      .sep { color: #334155; }
+    }
+    .simple-subtitle {
+       font-size: 12px; color: #94a3b8; margin-top: 2px; font-weight: 400;
+    }
+  }
+}
+
+.modal-body-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fcfdfe; }
+
+.modal-fixed-footer {
+  height: 64px; padding: 0 24px; background: #fff; border-top: 1px solid #f1f5f9;
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  .btn-cancel {
+    height: 36px; padding: 0 20px; border-radius: 8px; font-weight: 700; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0;
+  }
+  .btn-submit {
+    height: 36px; padding: 0 24px; border-radius: 8px; font-weight: 700; background: #1e293b; border: none; color: white;
+    &:hover { background: #334155; }
+  }
+}
+
+/* Fix width for Pagination Size Changer to accommodate 500/1000 options */
+.ant-pagination-options-size-changer.ant-select {
+  min-width: 120px !important;
+  width: auto !important;
+}
+
+.ant-select-item-option-content {
+  white-space: nowrap !important;
+}

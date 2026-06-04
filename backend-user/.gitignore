@@ -1,0 +1,46 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# 启动脚本（包含密码，不应提交到Git）
+启动.bat
+启动.ps1
+启动.sh
+
+# 敏感配置文件（包含密码等敏感信息）
+# ⚠️ 注意：application-dev.yml 不应包含硬编码密码
+# 如果已提交，请使用以下命令从Git历史中移除：
+# git rm --cached src/main/resources/application-dev.yml
+# git commit -m "Remove sensitive config file"
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+

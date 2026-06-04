@@ -1,0 +1,144 @@
+query getOrders($cursor: String, $query: String) {
+  orders(first: 25, after: $cursor, query: $query, sortKey: UPDATED_AT, reverse: true) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      cursor
+      node {
+        id
+        legacyResourceId
+        name
+        createdAt
+        updatedAt
+        processedAt
+        closedAt
+        cancelledAt
+        cancelReason
+        displayFinancialStatus
+        displayFulfillmentStatus
+        email
+        phone
+        note
+        tags
+        subtotalPriceSet { shopMoney { amount currencyCode } }
+        totalTaxSet { shopMoney { amount currencyCode } }
+        totalDiscountsSet { shopMoney { amount currencyCode } }
+        totalShippingPriceSet { shopMoney { amount currencyCode } }
+        totalPriceSet { shopMoney { amount currencyCode } }
+
+        discountCodes
+        discountApplications(first: 10) {
+            nodes {
+                ... on DiscountCodeApplication {
+                    code
+                }
+            }
+        }
+
+        customer {
+          id
+          email
+          firstName
+          lastName
+          phone
+        }
+
+        shippingAddress {
+          name
+          address1
+          address2
+          city
+          province
+          provinceCode
+          country
+          countryCodeV2
+          zip
+          phone
+        }
+
+        billingAddress {
+          name
+          address1
+          address2
+          city
+          province
+          provinceCode
+          country
+          countryCodeV2
+          zip
+          phone
+        }
+
+        lineItems(first: 50) {
+            nodes {
+                id
+                sku
+                title
+                variantTitle
+                quantity
+                originalUnitPriceSet { shopMoney { amount } }
+                variant {
+                    id
+                    sku
+                    image { url }
+                    product { id }
+                }
+                requiresShipping
+                fulfillmentStatus
+                vendor
+            }
+        }
+
+        transactions(first: 5) {
+            id
+            kind
+            status
+            gateway
+            amountSet { shopMoney { amount currencyCode } }
+            createdAt
+            paymentId
+        }
+
+        fulfillments {
+            id
+            createdAt
+            status
+            displayStatus
+            inTransitAt
+            deliveredAt
+            estimatedDeliveryAt
+            trackingInfo {
+                number
+                url
+            }
+        }
+
+        refunds {
+            id
+            createdAt
+            note
+            totalRefundedSet { shopMoney { amount } }
+            refundLineItems(first: 20) {
+                nodes {
+                    id
+                    lineItem { id }
+                    quantity
+                    subtotalSet { shopMoney { amount } }
+                    totalTaxSet { shopMoney { amount } }
+                }
+            }
+            transactions(first: 5) {
+                nodes {
+                    id
+                    kind
+                    status
+                    amountSet { shopMoney { amount } }
+                }
+            }
+        }
+      }
+    }
+  }
+}

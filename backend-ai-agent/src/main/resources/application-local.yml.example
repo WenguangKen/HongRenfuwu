@@ -1,0 +1,46 @@
+# 复制本文件为 application-local.yml 后填写（application-local.yml 已被 git 忽略）
+spring:
+  config:
+    activate:
+      on-profile: local
+
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: 你的ark-api-key
+      base-url: https://ark.cn-beijing.volces.com/api/v3
+      # 对话推理接入点（控制台「推理」- 在线推理 - 接入点 ID，ep- 开头）
+      model-name: ep-你的对话模型ID
+      max-tokens: 2000
+      temperature: 0.1
+    # 小A 流式对话（TokenStream）必填，可与 chat-model 填相同接入点
+    streaming-chat-model:
+      api-key: 你的ark-api-key
+      base-url: https://ark.cn-beijing.volces.com/api/v3
+      model-name: ep-你的对话模型ID
+      max-tokens: 2000
+      temperature: 0.1
+    # 勿配置 embedding-model：Doubao-embedding-vision 须走 /embeddings/multimodal，见下方 app.volcengine.embedding
+
+app:
+  volcengine:
+    embedding:
+      api-key: 你的ark-api-key
+      base-url: https://ark.cn-beijing.volces.com/api/v3
+      # 向量接入点（须为 Doubao-embedding-vision 等多模态 embedding 模型）
+      endpoint-id: ep-你的向量模型ID
+      dimensions: 1024
+  jwt:
+    secret: Wenguang-1122-Athluna-KMS-JWT-Secret-Key-2026
+  internal-api:
+    token: athluna-internal-dev-token
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173
+
+services:
+  backend-influencer:
+    url: http://localhost:8082/influencer-api
+
+logging:
+  level:
+    com.athlunakms.ai: DEBUG

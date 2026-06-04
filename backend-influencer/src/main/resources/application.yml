@@ -1,0 +1,154 @@
+spring:
+  application:
+    name: influencer-service
+  
+  # 数据源配置 (主从分离)
+  datasource:
+    master:
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: ${DB_USER:root}
+      password: ${DB_PASSWORD:Yaoxingxuanlv-39}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        keepalive-time: 60000
+        leak-detection-threshold: 30000
+        pool-name: HikariPool-Influencer-Master
+    
+    slave:
+      url: jdbc:mysql://${DB_SLAVE_HOST:localhost}:${DB_SLAVE_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: ${DB_SLAVE_USER:root}
+      password: ${DB_SLAVE_PASSWORD:Yaoxingxuanlv-39}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        keepalive-time: 60000
+        leak-detection-threshold: 30000
+        pool-name: HikariPool-Influencer-Slave
+  
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+
+  # Flyway 配置 (禁用 - 表已手动创建)
+  flyway:
+    enabled: false
+  
+  # Redis 缓存配置
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 1
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  
+  # MVC 配置 - 禁用默认静态资源处理，避免拦截 API 请求
+  mvc:
+    static-path-pattern: /static/**  # 只有 /static/** 路径才会被当作静态资源
+  
+  web:
+    resources:
+      add-mappings: false  # 完全禁用 Spring Boot 的默认资源映射
+
+# 服务器配置
+server:
+  port: 8082
+  servlet:
+    context-path: /influencer-api
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    max-connections: 5000
+    accept-count: 100
+
+# 应用配置
+app:
+  feishu:
+    webhook-url: https://open.feishu.cn/open-apis/bot/v2/hook/a8ace108-d844-4984-bc8d-fd1a2087638b
+    
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:*,http://127.0.0.1:*}
+  
+  storage:
+    type: ${STORAGE_TYPE:LOCAL}
+    base-path: ${STORAGE_BASE_PATH:D:/content-files}
+    public-url-prefix: ${STORAGE_PUBLIC_URL:http://localhost:8082/influencer-api/v1/files}
+  
+  rate-limit:
+    enabled: true
+    requests-per-minute: 100
+
+  # AI 中枢调用 internal API 时携带 X-Internal-Token
+  internal-api:
+    token: ${INTERNAL_API_TOKEN:influencer-internal-dev-token}
+
+# 服务间调用配置
+services:
+  shopify-integration:
+    url: ${SHOPIFY_INTEGRATION_URL:http://localhost:8081}
+  user:
+    url: ${USER_SERVICE_URL:http://localhost:8080}
+  ai-agent:
+    url: ${AI_AGENT_URL:http://localhost:8085}
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.athlunakms.influencer: INFO
+    org.hibernate.SQL: ERROR
+    org.springframework: WARN
+  file:
+    name: logs/influencer-service.log
+    max-size: 10MB
+    max-history: 30
+
+# Actuator 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10GB
+  tracing:
+    enabled: false

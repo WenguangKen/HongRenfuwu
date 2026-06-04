@@ -1,0 +1,82 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfiguration
+  redis:
+    host: localhost
+    port: 6379
+    password: hongrenfuwu2025
+  # 开发环境数据源配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/hongrenfuwu?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: Yaoxingxuanlv-39
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+  # 开发环境Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: hongrenfuwu2025
+      database: 0
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+          max-wait: 3000
+
+# 开发环境应用配置
+# 注意：以下配置包含默认值仅用于开发环境快速启动，生产环境必须通过环境变量覆盖所有敏感信息
+app:
+  # JWT配置
+  # 生产环境警告：必须通过环境变量 JWT_SECRET 设置强随机密钥（至少256位）
+  jwt:
+    secret: ${JWT_SECRET:Influencer-Marketing-JWT-Secret-Key-2026-Dev-Only}
+    expiration: 604800000  # 7天（毫秒），实际由闲置超时决定
+    refresh-expiration: 604800000  # 7天（毫秒）
+  
+  # 加密配置
+  # 生产环境警告：必须通过环境变量 ENCRYPTION_MASTER_KEY 设置32字节以上的强密钥
+  encryption:
+    master-key: ${ENCRYPTION_MASTER_KEY:Influencer-AES-Master-Key-32-Dev}
+  
+  # 初始管理员账号配置（仅首次启动时使用）
+  # 生产环境警告：必须通过环境变量设置初始管理员密码，不要使用默认密码
+  initial-admin:
+    enabled: true  # 是否启用初始管理员账号自动创建
+    username: ${INITIAL_ADMIN_USERNAME:admin}
+    email: ${INITIAL_ADMIN_EMAIL:admin@example.com}
+    phone: ${INITIAL_ADMIN_PHONE:}
+    password: ${INITIAL_ADMIN_PASSWORD:admin123456}  # 生产环境必须通过环境变量覆盖
+    role-name: ${INITIAL_ADMIN_ROLE_NAME:管理员}
+
+# 开发环境日志配置
+logging:
+  level:
+    root: WARN
+    com.athlunakms: INFO
+    com.athlunakms.common.config.ScheduledTasks: WARN
+    com.athlunakms.common.security.encryption.AESEncryptionService: ERROR
+    org.springframework.web: WARN
+    org.springframework.web.servlet.DispatcherServlet: WARN
+    org.hibernate.SQL: ERROR
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    com.zaxxer.hikari: WARN
+
+

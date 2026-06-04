@@ -1,0 +1,66 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: influencer-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: Yaoxingxuanlv-39
+      MYSQL_DATABASE: hongrenfuwu
+    ports:
+      - "3306:3306"
+    volumes:
+      mysql-data:/var/lib/mysql
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: influencer-redis-dev
+    command: redis-server --requirepass hongrenfuwu2025
+    ports:
+      - "6379:6379"
+    restart: always
+
+  backend-eccang-integration:
+    build:
+      context: ./backend-eccang-integration
+      dockerfile: Dockerfile
+    container_name: influencer-eccang-integration-dev
+    ports:
+      - "8085:8085"
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    restart: always
+
+  minio:
+    image: minio/minio
+    container_name: influencer-minio-dev
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: InfluencerMinio2025
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    restart: always
+
+  postgres-vector:
+    image: pgvector/pgvector:pg16
+    container_name: influencer-pgvector-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: influencer_vector
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  mysql-data:
+  minio-data:
+  pgvector-data:

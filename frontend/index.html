@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>红人营销系统</title>
+    <!-- Noto Sans SC 思源黑体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script>
+      (function(){
+        var __err__ = console.error;
+        var __patterns__ = [
+          'Vue warn',
+          'Runtime directive used on component with non-element root node',
+          'Extraneous non-props attributes',
+          'Non-function value encountered for default slot'
+        ];
+        console.log = function(){};
+        console.info = function(){};
+        console.warn = function(){};
+        console.debug = function(){};
+        console.error = function(msg){
+          if (typeof msg === 'string' && __patterns__.some(function(p){ return msg.indexOf(p) !== -1; })) return;
+          return __err__.apply(console, arguments);
+        };
+      })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
