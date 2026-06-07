@@ -13,6 +13,7 @@ import outreachRoutes from './modules/outreach'
 import productRoutes from './modules/product'
 import systemRoutes from './modules/system'
 import financeRoutes from './modules/finance'
+import orderRoutes from './modules/order'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -60,7 +61,8 @@ const router = createRouter({
                 outreachRoutes,
                 financeRoutes,
                 productRoutes,
-                systemRoutes
+                systemRoutes,
+                orderRoutes
             )
         }
     ]

@@ -20,6 +20,15 @@ const menu: MenuItem[] = [
     ],
   },
   {
+    key: 'order',
+    title: '订单管理',
+    icon: 'ShoppingOutlined',
+    children: [
+      { key: 'order-sample', title: '红人订单', path: '/order/sample', pageKey: 'order.sample' },
+      { key: 'order-conversion', title: '转化订单', path: '/order/conversion', pageKey: 'order.conversion' },
+    ],
+  },
+  {
     key: 'outreach',
     title: '红人建联',
     icon: 'SendOutlined',
