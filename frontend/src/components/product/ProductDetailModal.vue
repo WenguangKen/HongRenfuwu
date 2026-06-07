@@ -2,14 +2,14 @@
   <a-modal
     v-model:open="visible"
     :title="null"
-    width="1000px" 
+    width="1200px" 
     :footer="null"
     centered
     class="premium-refined-modal"
     wrapClassName="product-detail-modal-wrap"
     destroyOnClose
     :closable="false"
-    :body-style="{ padding: '0px', height: '680px' }"
+    :body-style="{ padding: '0px', height: '750px' }"
   >
     <!-- Custom Header (IC Style) -->
     <div class="ic-modal-header">
@@ -25,7 +25,7 @@
             </span>
           </div>
           <div class="ic-header-subtitle">
-            查看商品基本信息、SKU详情及操作日志
+            查看商品基本信息及 SKU 详情
           </div>
         </div>
       </div>
@@ -71,20 +71,40 @@
                  <!-- Section 2: Image Gallery (Moved to Top) -->
                  <div class="gallery-section" style="margin-bottom: 24px;">
                     <div class="image-group-list">
-                       <div class="image-item-wrapper" v-for="(img, idx) in spuImageList" :key="idx">
-                          <img :src="img" class="product-img" @click="previewImage(img)" />
-                          <div class="img-tag" v-if="idx === 0">主图</div>
-                       </div>
+                        <div class="image-item-wrapper" v-for="(img, idx) in resolvedImages" :key="idx">
+                           <img :src="img" class="product-img" @load="handleImageLoad($event, idx)" @error="handleImageError(idx)" @click="previewImage(img)" />
+                           <div class="img-tag" v-if="idx === 0">主图</div>
+                        </div>
                     </div>
                  </div>
 
                  <!-- Section 3: Info Grid -->
                  <a-descriptions bordered size="small" :column="2" class="premium-descriptions">
-                   <a-descriptions-item label="品牌 (Vendor)">
+                   <a-descriptions-item label="站点">
+                      {{ productData?.siteCode || '-' }}
+                   </a-descriptions-item>
+
+                   <a-descriptions-item label="所属店铺">
+                      {{ productData?.shopName || '-' }}
+                   </a-descriptions-item>
+
+                   <a-descriptions-item label="易仓账号">
+                      {{ productData?.platformAccount || '-' }}
+                   </a-descriptions-item>
+
+                   <a-descriptions-item label="品牌">
                       {{ productData?.vendor || '-' }}
                    </a-descriptions-item>
+
+                   <a-descriptions-item label="商品属性" :span="2">
+                      {{ productData?.attributesText || '-' }}
+                   </a-descriptions-item>
                    
-                   <a-descriptions-item label="SPU ID">
+                   <a-descriptions-item label="分类" :span="2">
+                      {{ productData?.categoryPath || '-' }}
+                   </a-descriptions-item>
+                   
+                   <a-descriptions-item label="父 ASIN">
                       <span style="font-family: 'JetBrains Mono'; color: #64748b;">{{ productData?.spu || '-' }}</span>
                    </a-descriptions-item>
 
@@ -175,7 +195,8 @@
                 <table class="premium-detail-table clean-table">
                   <thead>
                      <tr>
-                       <th style="width: 220px;">SKU</th>
+                       <th style="width: 260px;">SKU</th>
+                       <th style="width: 140px;">ASIN</th>
                        <th style="text-align: center; width: 60px;">图片</th>
                        <th>变体属性</th>
                        <th style="text-align: right; width: 100px;">售价</th>
@@ -192,6 +213,11 @@
                                 <span v-else>{{ variant.shopifyVariantId || '-' }}</span>
                              </div>
 
+                             <!-- Status Tag -->
+                             <a-tag v-if="variant.status === 'active'" color="green" style="font-size: 11px; padding: 0 4px; line-height: 16px; margin: 0; font-weight: 600;">上架</a-tag>
+                             <a-tag v-else-if="variant.status === 'draft'" color="default" style="font-size: 11px; padding: 0 4px; line-height: 16px; margin: 0; font-weight: 600;">草稿</a-tag>
+                             <a-tag v-else color="red" style="font-size: 11px; padding: 0 4px; line-height: 16px; margin: 0; font-weight: 600;">下架</a-tag>
+
                              <!-- Shopify Admin Link -->
                              <a 
                                v-if="productData?.shopDomain && variant.shopifyVariantId" 
@@ -205,12 +231,31 @@
                              </a>
                           </div>
                        </td>
-                       <td style="text-align: center;">
-                          <div class="variant-img-thumbnail small" v-if="variant.imageUrl" @click.stop="previewImage(variant.imageUrl)">
-                            <img :src="variant.imageUrl" />
+                       <td>
+                          <div class="asin-cell-content" style="display: flex; align-items: center; gap: 6px;">
+                             <!-- Copyable Text -->
+                             <div class="sku-text-only" @click.stop="handleCopy(variant.asin)" title="点击复制">
+                                <span>{{ variant.asin || '-' }}</span>
+                             </div>
+                             <!-- Amazon Link -->
+                             <a 
+                               v-if="variant.asin && variant.asin !== '-'" 
+                               :href="variant.asinUrl || `https://www.amazon.com/dp/${variant.asin}`" 
+                               target="_blank" 
+                               class="admin-link-btn"
+                               title="在亚马逊查看"
+                               @click.stop
+                             >
+                                <LinkOutlined />
+                             </a>
                           </div>
-                          <div v-else class="variant-img-placeholder small"><PictureOutlined /></div>
                        </td>
+                        <td style="text-align: center;">
+                           <div class="variant-img-thumbnail small" v-if="resolveVariantImage(variant)" @click.stop="previewImage(resolveVariantImage(variant))">
+                              <img :src="resolveVariantImage(variant)" @load="handleVariantImgLoad($event, variant)" @error="handleVariantImgError($event, variant)" />
+                           </div>
+                           <div v-else class="variant-img-placeholder small"><PictureOutlined /></div>
+                        </td>
                        <td>
                           <div class="variant-options">
                              {{ [variant.option1, variant.option2, variant.option3].filter(val => val && val !== 'null').join(' / ') || '默认变体' }}
@@ -226,27 +271,13 @@
                        </td>
                     </tr>
                     <tr v-if="filteredVariants.length === 0">
-                       <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
+                       <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
                           无匹配变体
                        </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </div>
-          </a-tab-pane>
-          
-          <!-- Tab 3: Logs (Placeholder) -->
-           <a-tab-pane key="logs" class="unified-tab-pane">
-            <template #tab>
-              <span class="tab-label-box"><HistoryOutlined /> 操作日志</span>
-            </template>
-            <div class="unified-tab-content locked-height">
-               <div class="empty-state-wrapper">
-                  <div class="empty-hint">
-                     <div class="main-hint">暂无日志记录</div>
-                  </div>
-               </div>
             </div>
           </a-tab-pane>
         </a-tabs>
@@ -283,6 +314,98 @@ const spuImageList = computed(() => {
   }
   return props.productData?.image ? [props.productData.image] : [];
 });
+
+const resolvedImages = ref<string[]>([]);
+watch(spuImageList, (newImgs) => {
+  resolvedImages.value = [...newImgs];
+}, { immediate: true });
+
+const PLACEHOLDER_IMAGE =
+  'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="#f1f5f9" width="120" height="120" rx="12"/><path fill="#94a3b8" d="M44 36h32c4 0 7 3 7 7v34c0 4-3 7-7 7H44c-4 0-7-3-7-7V43c0-4 3-7 7-7zm16 6a10 10 0 100 20 10 10 0 000-20zm-18 42h36l-9-12-6 8-7-9-14 13z"/></svg>'
+  );
+
+const isPlaceholderImage = (url?: string | null) => {
+  if (!url) return true;
+  return url.includes('noimg.jpg') || url.includes('/images/base/noimg') || url.startsWith('data:image/svg+xml');
+};
+
+const handleImageError = (idx: number) => {
+  const currentUrl = resolvedImages.value[idx];
+  if (!currentUrl) return;
+
+  const match = currentUrl.match(/\/images\/P\/([A-Z0-9]{10})/i);
+  if (match) {
+    const asin = match[1];
+    const adSystemUrl = `https://ws-na.amazon-adsystem.com/widgets/q?ASIN=${asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US`;
+    if (currentUrl !== adSystemUrl) {
+      resolvedImages.value[idx] = adSystemUrl;
+      return;
+    }
+  }
+
+  const variants = props.productData?.variants || [];
+  const firstVar = variants[0];
+  if (firstVar) {
+    if (firstVar.imageUrl && resolvedImages.value[idx] !== firstVar.imageUrl) {
+      resolvedImages.value[idx] = firstVar.imageUrl;
+      return;
+    }
+    if (firstVar.asin && firstVar.asin !== '-') {
+      const varAsinUrl = `https://images-na.ssl-images-amazon.com/images/P/${firstVar.asin}.01._SL250_.jpg`;
+      if (resolvedImages.value[idx] !== varAsinUrl) {
+        resolvedImages.value[idx] = varAsinUrl;
+        return;
+      }
+      const varAdSystemUrl = `https://ws-na.amazon-adsystem.com/widgets/q?ASIN=${firstVar.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US`;
+      if (resolvedImages.value[idx] !== varAdSystemUrl) {
+        resolvedImages.value[idx] = varAdSystemUrl;
+        return;
+      }
+    }
+  }
+
+  resolvedImages.value[idx] = PLACEHOLDER_IMAGE;
+};
+
+const resolveVariantImage = (variant: any) => {
+  if (variant.imageUrl && !isPlaceholderImage(variant.imageUrl)) {
+    return variant.imageUrl;
+  }
+  if (variant.asin && variant.asin !== '-') {
+    return `https://images-na.ssl-images-amazon.com/images/P/${variant.asin}.01._SL75_.jpg`;
+  }
+  return null;
+};
+
+const handleVariantImgError = (event: Event, variant: any) => {
+  const img = event.target as HTMLImageElement;
+  const currentUrl = img.src;
+  
+  if (variant.asin && variant.asin !== '-') {
+    const adSystemUrl = `https://ws-na.amazon-adsystem.com/widgets/q?ASIN=${variant.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US`;
+    if (currentUrl !== adSystemUrl) {
+      img.src = adSystemUrl;
+      return;
+    }
+  }
+  
+  img.src = PLACEHOLDER_IMAGE;
+};
+
+const handleImageLoad = (event: Event, idx: number) => {
+  const img = event.target as HTMLImageElement;
+  if (img.naturalWidth === 1 && img.naturalHeight === 1) {
+    handleImageError(idx);
+  }
+};
+
+const handleVariantImgLoad = (event: Event, variant: any) => {
+  const img = event.target as HTMLImageElement;
+  if (img.naturalWidth === 1 && img.naturalHeight === 1) {
+    handleVariantImgError(event, variant);
+  }
+};
 
 const visible = computed({
   get: () => props.open,
@@ -349,7 +472,8 @@ const filteredVariants = computed(() => {
       const sku = (v.sku || '').toLowerCase();
       const id = (v.shopifyVariantId || '').toString();
       const title = (v.title || '').toLowerCase();
-      return sku.includes(lowerSearch) || id.includes(lowerSearch) || title.includes(lowerSearch);
+      const asin = (v.asin || '').toLowerCase();
+      return sku.includes(lowerSearch) || id.includes(lowerSearch) || title.includes(lowerSearch) || asin.includes(lowerSearch);
     });
   }
   
@@ -408,8 +532,8 @@ const handleCancel = () => {
   justify-content: center;
 
   .ant-modal {
-    width: 1000px !important;
-    height: 680px !important;
+    width: 1200px !important;
+    height: 750px !important;
     max-height: 90vh !important;
     top: 0 !important;
     padding-bottom: 0 !important;
@@ -609,7 +733,7 @@ const handleCancel = () => {
   box-sizing: border-box;
 
   &.locked-height {
-    height: 580px !important; 
+    height: 650px !important; 
   }
 }
 

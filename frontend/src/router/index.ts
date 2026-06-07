@@ -10,8 +10,6 @@ import { startRouteProgress, finishRouteProgress } from '@/utils/routeProgress'
 import contentRoutes from './modules/content'
 import influencerRoutes from './modules/influencer'
 import outreachRoutes from './modules/outreach'
-import orderRoutes from './modules/order'
-import commissionRoutes from './modules/commission'
 import productRoutes from './modules/product'
 import systemRoutes from './modules/system'
 import financeRoutes from './modules/finance'
@@ -60,8 +58,6 @@ const router = createRouter({
                 contentRoutes,
                 influencerRoutes,
                 outreachRoutes,
-                orderRoutes,
-                commissionRoutes,
                 financeRoutes,
                 productRoutes,
                 systemRoutes

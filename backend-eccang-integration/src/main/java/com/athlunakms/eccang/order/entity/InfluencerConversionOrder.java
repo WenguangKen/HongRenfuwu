@@ -100,6 +100,18 @@ public class InfluencerConversionOrder {
     @Column(name="customer_email", length=200)
     private String customerEmail;
 
+    @Column(name="imported_handle", length=100)
+    private String importedHandle;
+
+    @Column(name="is_imported", nullable=false)
+    private Boolean isImported = false;
+
+    @Column(name="import_source", length=50)
+    private String importSource;
+
+    @Column(name="import_batch_no", length=50)
+    private String importBatchNo;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -286,6 +298,22 @@ public class InfluencerConversionOrder {
         return this.customerEmail;
     }
 
+    public String getImportedHandle() {
+        return this.importedHandle;
+    }
+
+    public Boolean getIsImported() {
+        return this.isImported;
+    }
+
+    public String getImportSource() {
+        return this.importSource;
+    }
+
+    public String getImportBatchNo() {
+        return this.importBatchNo;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -448,6 +476,22 @@ public class InfluencerConversionOrder {
 
     public void setCustomerEmail(String customerEmail) {
         this.customerEmail = customerEmail;
+    }
+
+    public void setImportedHandle(String importedHandle) {
+        this.importedHandle = importedHandle;
+    }
+
+    public void setIsImported(Boolean isImported) {
+        this.isImported = isImported;
+    }
+
+    public void setImportSource(String importSource) {
+        this.importSource = importSource;
+    }
+
+    public void setImportBatchNo(String importBatchNo) {
+        this.importBatchNo = importBatchNo;
     }
 
     public boolean equals(Object o) {

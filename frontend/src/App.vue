@@ -5,19 +5,11 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 dayjs.locale('zh-cn');
 
-import { onMounted, onUnmounted } from 'vue';
-import { useSseStore } from '@/stores/sse';
+import { defineAsyncComponent } from 'vue';
 
-import CopilotFloatChat from '@/components/ai/CopilotFloatChat.vue';
+const CopilotFloatChat = defineAsyncComponent(() => import('@/components/ai/CopilotFloatChat.vue'));
 
 const locale = zhCN;
-const sseStore = useSseStore();
-
-onMounted(() => {
-});
-
-onUnmounted(() => {
-});
 
 </script>
 

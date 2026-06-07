@@ -1,10 +1,27 @@
 <template>
   <div class="product-list-page">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h2 class="page-title">商品列表</h2>
+        <span class="page-subtitle">易仓亚马逊商品 · 共 {{ pagination.total }} 件</span>
+      </div>
+      <a-space size="middle">
+        <a-button type="primary" @click="openSyncModal('product')" class="premium-btn primary-gradient">
+          <template #icon><SyncOutlined /></template>
+          同步易仓商品
+        </a-button>
+        <a-button type="default" @click="openSyncModal('fba')" class="premium-btn">
+          <template #icon><SyncOutlined /></template>
+          同步 FBA 库存
+        </a-button>
+      </a-space>
+    </div>
+
     <!-- 筛选区域 -->
     <a-card :bordered="false" class="filter-card glass-card" :body-style="{ padding: '16px 20px' }">
       <a-form :model="filterForm" layout="vertical" size="middle">
         <a-row :gutter="[20, 16]">
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="3">
             <a-form-item label="商品名称">
               <a-input 
                 v-model:value="filterForm.name" 
@@ -15,24 +32,35 @@
               />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="3">
             <a-form-item label="所属店铺">
-              <a-select v-model:value="filterForm.storeId" placeholder="选择店铺" show-search allow-clear class="premium-select">
-                <a-select-option v-for="s in stores" :key="s.id" :value="s.id">{{ s.storeName }}</a-select-option>
+              <a-select v-model:value="filterForm.platformAccount" placeholder="选择店铺" show-search allow-clear option-filter-prop="children" class="premium-select">
+                <a-select-option v-for="acc in platformAccounts" :key="acc" :value="acc">
+                  {{ acc }}
+                </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
-            <a-form-item label="商品SKU">
-              <a-input v-model:value="filterForm.sku" placeholder="输入SKU..." allow-clear class="premium-input" />
+          <a-col :xs="24" :sm="12" :md="8" :lg="3">
+            <a-form-item label="站点">
+              <a-select v-model:value="filterForm.site" placeholder="选择站点" show-search allow-clear option-filter-prop="children" class="premium-select">
+                <a-select-option v-for="st in sites" :key="st" :value="st">
+                  {{ st }}
+                </a-select-option>
+              </a-select>
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
-            <a-form-item label="商品ASIN">
-              <a-input v-model:value="filterForm.asin" placeholder="输入ASIN..." allow-clear class="premium-input" />
+          <a-col :xs="24" :sm="12" :md="8" :lg="3">
+            <a-form-item label="Seller SKU">
+              <a-input v-model:value="filterForm.sku" placeholder="输入Seller SKU..." allow-clear class="premium-input" />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="3">
+            <a-form-item label="父ASIN">
+              <a-input v-model:value="filterForm.asin" placeholder="输入父ASIN..." allow-clear class="premium-input" />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="12" :md="8" :lg="5">
             <a-form-item label="价格范围">
               <div class="premium-price-range-wrapper">
                 <a-input-number
@@ -52,7 +80,7 @@
                   placeholder="Max"
                   :min="0"
                   class="range-input"
-                :controls="false"
+                  :controls="false"
                 >
                   <template #prefix>
                     <span class="currency-symbol">$</span>
@@ -87,7 +115,7 @@
           <a-col :span="24" style="display: flex; justify-content: flex-end; align-items: flex-end;">
             <div class="filter-footer" style="padding-top: 0; border-top: none; margin-top: 0;">
               <a-space size="middle">
-                <a-button type="primary" @click="handleFilter" class="premium-btn primary-gradient" style="height: 32px; padding: 0 20px;">
+                <a-button type="primary" @click="() => { pagination.current = 1; fetchProducts(); }" class="premium-btn primary-gradient" style="height: 32px; padding: 0 20px;">
                   查询
                 </a-button>
                 <a-button @click="handleResetFilter" class="premium-btn" style="height: 32px; padding: 0 20px;">重置</a-button>
@@ -101,36 +129,27 @@
       </a-form>
     </a-card>
 
-    <a-card :bordered="false" class="table-card glass-card" :body-style="{ padding: '0' }">
-      <template #title>
-        <div class="table-actions-toolbar">
-          <div class="status-switcher-wrapper">
-            <a-radio-group v-model:value="activeKey" button-style="solid" class="premium-segmented" @change="handleTabChange">
-              <a-radio-button value="active">已上架</a-radio-button>
-              <a-radio-button value="draft">草稿</a-radio-button>
-              <a-radio-button value="inactive">已下架</a-radio-button>
-              <a-radio-button value="out_of_stock">缺货</a-radio-button>
-              <a-radio-button value="suspected_deleted">疑似删除</a-radio-button>
-            </a-radio-group>
-          </div>
-          
-          <a-space size="small" class="toolbar-btns">
-            <a-button type="primary" @click="syncModalVisible = true" class="premium-btn-small primary-gradient">
-              <template #icon><SyncOutlined /></template>同步易仓商品
-            </a-button>
-          </a-space>
-        </div>
-      </template>
+    <div class="status-tabs-bar">
+      <a-radio-group v-model:value="activeKey" button-style="solid" class="premium-segmented" @change="handleTabChange">
+        <a-radio-button value="all">全部 ({{ statistics.all || 0 }})</a-radio-button>
+        <a-radio-button value="active">已上架 ({{ statistics.active || 0 }})</a-radio-button>
+        <a-radio-button value="inactive">已下架 ({{ statistics.inactive || 0 }})</a-radio-button>
+        <a-radio-button value="out_of_stock">缺货 ({{ statistics.out_of_stock || 0 }})</a-radio-button>
+        <a-radio-button value="suspected_deleted">疑似删除 ({{ statistics.suspected_deleted || 0 }})</a-radio-button>
+      </a-radio-group>
+    </div>
 
+    <a-card :bordered="false" class="table-card glass-card" :body-style="{ padding: '0' }">
       <a-table
         :columns="columns"
         :data-source="displayData"
         :row-key="(record: any) => record.id || record.key"
         :pagination="false"
         :loading="{ spinning: loading, indicator: LoadingIcon }"
-        :scroll="displayData.length > 0 ? { x: 'max-content', y: filterExpanded ? 'calc(100vh - 460px)' : 'calc(100vh - 350px)' } : { x: 'max-content', y: filterExpanded ? 'calc(100vh - 460px)' : 'calc(100vh - 350px)' }"
+        :scroll="displayData.length > 0 ? { x: 1170, y: filterExpanded ? 'calc(100vh - 460px)' : 'calc(100vh - 350px)' } : { x: 1170, y: filterExpanded ? 'calc(100vh - 460px)' : 'calc(100vh - 350px)' }"
         :sticky="{ offsetScroll: 0 }"
         size="middle"
+        table-layout="fixed"
         class="premium-table"
         @change="handleTableChange"
       >
@@ -141,70 +160,126 @@
         </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'productInfo'">
-            <div class="user-info-cell">
-              <div class="avatar-wrapper">
-                 <div style="position: relative; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-                  <img 
-                    :src="record.image" 
-                    alt="商品图片"
-                    style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;"
-                    loading="lazy"
-                    @click="previewImage(record.image)"
-                  />
-                </div>
+            <div class="product-info-cell">
+              <div
+                class="product-thumb"
+                :class="{ 'is-placeholder': record.imageIsPlaceholder }"
+                @click="previewImage(record.largeImage)"
+              >
+                <img
+                  :src="record.image"
+                  :alt="record.name"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  @load="onImageLoad($event, record)"
+                  @error="onImageError($event, record)"
+                />
+                <span v-if="record.imageIsPlaceholder" class="thumb-badge">无图</span>
               </div>
-              <div class="info-content">
-                <div class="user-name" :title="record.name">{{ record.name }}</div>
-                <div class="meta-row" style="margin-top: 2px;">
-                   <span class="spu-text" @click.stop="handleCopy(record.asin)" style="cursor: pointer; color: #94a3b8; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                      ASIN: {{ record.asin }} <CopyOutlined />
-                   </span>
-                   <span class="spu-text" @click.stop="handleCopy(record.sku)" style="cursor: pointer; color: #94a3b8; font-size: 11px; display: flex; align-items: center; gap: 4px; margin-left: 8px;">
-                      SKU: {{ record.sku }} <CopyOutlined />
-                   </span>
-                </div>
-                <div class="meta-row" style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-                  <a-tag v-if="record.vendor" color="cyan" style="margin: 0; font-size: 10px; line-height: 18px;">{{ record.vendor }}</a-tag>
-                  <a-tag v-if="record.status === 'archived'" color="orange" style="margin: 0; font-size: 10px; line-height: 18px;">归档</a-tag>
-                  <a-tag v-if="record.status === 'unlisted'" color="default" style="margin: 0; font-size: 10px; line-height: 18px;">下架</a-tag>
-                </div>
-                  <span class="sku-count" style="font-size: 11px; color: #64748b;">
-                    平台: {{ record.platform || 'Amazon' }}
+              <div class="product-meta">
+                <div class="product-title" :title="record.name" style="font-weight: 500; font-size: 13px; line-height: 1.4; color: #1e293b; max-height: 40px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ record.name }}</div>
+                <div v-if="record.categoryPath" class="product-category" style="font-size: 11px; color: #0284c7; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
+                  <span style="background: #f0f9ff; border: 1px solid #e0f2fe; padding: 2px 6px; border-radius: 4px; font-weight: 500; display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="record.categoryPath">
+                    {{ record.categoryPath }}
                   </span>
+                </div>
               </div>
             </div>
           </template>
-          
+
+          <template v-else-if="column.key === 'productCodes'">
+            <div class="product-codes-cell" style="display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
+              <!-- 父ASIN -->
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-weight: 600; color: #475569;">父ASIN:</span>
+                <template v-if="record.hasMultipleAsins">
+                  <a-tooltip :title="record.asinTooltip">
+                    <span class="code-tag multiple" @click.stop="handleCopy(record.parentAsin)" title="点击复制父 ASIN" style="cursor: pointer; background: #eff6ff; color: #1d4ed8; padding: 1px 6px; border-radius: 4px; font-family: monospace; border: 1px dashed #60a5fa;">
+                      {{ record.parentAsin || '-' }} <CopyOutlined style="font-size: 10px; color: #60a5fa;" />
+                    </span>
+                  </a-tooltip>
+                </template>
+                <template v-else>
+                  <span v-if="record.parentAsin && record.parentAsin !== '-'" class="code-tag" @click.stop="handleCopy(record.parentAsin)" title="点击复制父 ASIN" style="cursor: pointer; background: #eff6ff; color: #1d4ed8; padding: 1px 6px; border-radius: 4px; font-family: monospace;">
+                    {{ record.parentAsin }} <CopyOutlined style="font-size: 10px; color: #60a5fa;" />
+                  </span>
+                  <span v-else>-</span>
+                </template>
+              </div>
+              <!-- SKU -->
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-weight: 600; color: #475569;">Seller SKU:</span>
+                <template v-if="record.hasMultipleSkus">
+                  <a-tooltip :title="record.skuTooltip">
+                    <span class="code-tag multiple" style="cursor: help; background: #fff7ed; color: #c2410c; padding: 1px 6px; border-radius: 4px; font-family: monospace; border: 1px dashed #fdba74;">
+                      {{ record.displaySku }}
+                    </span>
+                  </a-tooltip>
+                </template>
+                <template v-else>
+                  <span v-if="record.displaySku && record.displaySku !== '-'" class="code-tag" @click.stop="handleCopy(record.displaySku)" title="点击复制 Seller SKU" style="cursor: pointer; background: #fff7ed; color: #c2410c; padding: 1px 6px; border-radius: 4px; font-family: monospace;">
+                    {{ record.displaySku }} <CopyOutlined style="font-size: 10px; color: #fdba74;" />
+                  </span>
+                  <span v-else>-</span>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="column.key === 'skuStats'">
+            <div class="sku-stats-cell" style="display: flex; flex-direction: column; gap: 1px; font-size: 11px; width: 100%; text-align: center; line-height: 1.2;">
+              <div><span style="color: #10b981; font-weight: 600;">上:{{ record.skuActive || 0 }}</span></div>
+              <div><span style="color: #ef4444; font-weight: 600;">下:{{ record.skuInactive || 0 }}</span></div>
+              <div style="border-top: 1px dashed #e2e8f0; margin-top: 1px; padding-top: 1px; color: #3b82f6; font-weight: 700;">总:{{ record.skuTotal || 0 }}</div>
+            </div>
+          </template>
+
+          <template v-else-if="column.key === 'platform'">
+            <a-tag color="blue" class="platform-tag" style="margin: 0; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;">{{ record.platform || 'Amazon' }}</a-tag>
+          </template>
+
+          <template v-else-if="column.key === 'fulfillment'">
+            <a-tag v-if="record.productType" color="purple" class="type-tag" style="margin: 0; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;">{{ record.productType }}</a-tag>
+            <span v-else>-</span>
+          </template>
+
+          <template v-else-if="column.key === 'siteCode'">
+            <span v-if="record.siteCode" class="site-pill">{{ record.siteCode }}</span>
+            <span v-else>-</span>
+          </template>
+
+          <template v-else-if="column.key === 'platformAccount'">
+            <span v-if="record.platformAccount" class="account-pill">{{ record.platformAccount }}</span>
+            <span v-else>-</span>
+          </template>
+
           <template v-else-if="column.key === 'shopName'">
-             <a-tag class="status-tag tag-blue">{{ record.shopName || '-' }}</a-tag>
+            <span class="shop-pill">{{ record.shopName || '-' }}</span>
           </template>
 
           <template v-else-if="column.key === 'price'">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-              <span style="font-weight: 600; color: #1e293b; font-family: 'Inter', sans-serif;">{{ record.displayPrice }}</span>
-            </div>
+            <span class="price-text">{{ record.displayPrice }}</span>
           </template>
-          
+
           <template v-else-if="column.key === 'fbaInventory'">
-             <span :style="{ color: record.fbaInventory < 10 ? '#ef4444' : (record.fbaInventory < 50 ? '#f59e0b' : '#10b981'), fontWeight: 600 }">
-              <span style="font-size: 10px; color: #64748b; margin-right: 4px;">FBA:</span>
+            <span class="inventory-pill" :class="inventoryLevel(record.fbaInventory)">
               {{ record.fbaInventory }}
             </span>
           </template>
 
-          <template v-else-if="column.key === 'link'">
-            <div class="homepage-link-cell">
-               <a :href="record.link" target="_blank" class="action-link" style="font-size: 12px; color: #3b82f6;">
-                 <LinkOutlined /> 查看
-               </a>
-            </div>
-          </template>
-
           <template v-else-if="column.key === 'action'">
             <div class="action-btns-wrapper">
-              <a-button type="primary" size="small" @click="openDetail(record)" class="detail-btn">
-                详情
-              </a-button>
+              <a 
+                class="action-link" 
+                :href="record.link" 
+                target="_blank" 
+                :class="{ disabled: !record.asin || record.asin === '-' }"
+                @click="(!record.asin || record.asin === '-') ? $event.preventDefault() : null"
+              >
+                链接
+              </a>
+              <span class="divider">|</span>
+              <a class="action-link detail" @click="openDetail(record)">详情</a>
             </div>
           </template>
         </template>
@@ -238,6 +313,7 @@
     />
     <ProductSyncModal
       v-model:open="syncModalVisible"
+      :sync-type="currentSyncType"
       @success="handleSyncSuccess"
     />
 
@@ -267,34 +343,115 @@ import dayjs from 'dayjs';
 import ProductImagePreview from '@/components/product/ProductImagePreview.vue';
 import ProductDetailModal from '@/components/product/ProductDetailModal.vue';
 import ProductSyncModal from '@/components/product/ProductSyncModal.vue';
-import { getEccangProducts, getEccangStores } from '@/services/eccangService';
+import { getEccangProducts, getEccangStores, getEccangProductStatistics, getEccangPlatformAccounts, getEccangSites } from '@/services/eccangService';
 import type { EccangStoreConfig } from '@/services/eccangService';
 import type { ProductItem, ProductStatus } from '@/types/product';
-
-import { useSseStore } from '@/stores/sse';
 
 defineOptions({
   name: 'ProductList'
 });
 
-const sseStore = useSseStore();
-
-// Watch for SSE events to auto-refresh
-watch(() => sseStore.lastEvent, (event) => {
-  if (event && (
-    event.category === 'products' || 
-    event.category === 'inventory' || 
-    (event.category === 'system' && (event.data?.topic === 'reconnect' || event.data?.topic === 'fallback_poll'))
-  )) {
-
-    fetchProducts();
-  }
-});
-
 // Loading Icon
 const LoadingIcon = h(LoadingOutlined, { style: { fontSize: '24px' }, spin: true });
 
-const activeKey = ref('active');
+const PLACEHOLDER_IMAGE =
+  'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect fill="#f1f5f9" width="120" height="120" rx="12"/><path fill="#94a3b8" d="M44 36h32c4 0 7 3 7 7v34c0 4-3 7-7 7H44c-4 0-7-3-7-7V43c0-4 3-7 7-7zm16 6a10 10 0 100 20 10 10 0 000-20zm-18 42h36l-9-12-6 8-7-9-14 13z"/></svg>'
+  );
+
+const isPlaceholderImage = (url?: string | null) => {
+  if (!url) return true;
+  return url.includes('noimg.jpg') || url.includes('/images/base/noimg') || url.startsWith('data:image/svg+xml');
+};
+
+const amazonImageFromAsin = (asin?: string | null, size = 'SL150') => {
+  if (!asin || asin === '-') return null;
+  return `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._${size}_.jpg`;
+};
+
+const resolveProductImage = (url?: string | null, asin?: string | null, size = 'SL150') => {
+  if (!isPlaceholderImage(url)) {
+    if (url && url.includes('images-na.ssl-images-amazon.com')) {
+      return url.replace(/_(?:SL|UL|SX|SY)\d+_/, `_${size}_`).replace(/^http:\/\//i, 'https://');
+    }
+    return url!.replace(/^http:\/\//i, 'https://');
+  }
+  const amazonImage = amazonImageFromAsin(asin, size);
+  return amazonImage || PLACEHOLDER_IMAGE;
+};
+
+const inventoryLevel = (qty: number) => {
+  if (qty <= 0) return 'out';
+  if (qty < 10) return 'low';
+  if (qty < 50) return 'mid';
+  return 'high';
+};
+
+const onImageError = (event: Event, record: any) => {
+  const img = event.target as HTMLImageElement;
+  const currentUrl = img.src;
+  
+  if (currentUrl === PLACEHOLDER_IMAGE) return;
+
+  // 1. Try newer Amazon ad-system widget URL for this record's ASIN
+  const match = currentUrl.match(/\/images\/P\/([A-Z0-9]{10})/i);
+  if (match) {
+    const asin = match[1];
+    const adSystemUrl = `https://ws-na.amazon-adsystem.com/widgets/q?ASIN=${asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US`;
+    if (currentUrl !== adSystemUrl) {
+      record.image = adSystemUrl;
+      img.src = adSystemUrl;
+      return;
+    }
+  }
+
+  // 2. Try first variant's ASIN
+  const firstVar = record.variants?.[0];
+  if (firstVar) {
+    if (firstVar.imageUrl && currentUrl !== firstVar.imageUrl) {
+      record.image = firstVar.imageUrl;
+      img.src = firstVar.imageUrl;
+      return;
+    }
+    if (firstVar.asin && firstVar.asin !== '-') {
+      const varAsinUrl = `https://images-na.ssl-images-amazon.com/images/P/${firstVar.asin}.01._SL75_.jpg`;
+      if (currentUrl !== varAsinUrl) {
+        record.image = varAsinUrl;
+        img.src = varAsinUrl;
+        return;
+      }
+      const varAdSystemUrl = `https://ws-na.amazon-adsystem.com/widgets/q?ASIN=${firstVar.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=US`;
+      if (currentUrl !== varAdSystemUrl) {
+        record.image = varAdSystemUrl;
+        img.src = varAdSystemUrl;
+        return;
+      }
+    }
+  }
+
+  // 3. Fallback to placeholder
+  record.image = PLACEHOLDER_IMAGE;
+  record.imageIsPlaceholder = true;
+  img.src = PLACEHOLDER_IMAGE;
+};
+
+const onImageLoad = (event: Event, record: any) => {
+  const img = event.target as HTMLImageElement;
+  if (img.naturalWidth === 1 && img.naturalHeight === 1) {
+    onImageError(event, record);
+  }
+};
+
+const activeKey = ref('all');
+
+const statistics = reactive({
+  all: 0,
+  active: 0,
+  inactive: 0,
+  out_of_stock: 0,
+  suspected_deleted: 0,
+});
+
 const loading = ref(false);
 const filterExpanded = ref(false);
 const selectedRowKeys = ref<any[]>([]);
@@ -305,8 +462,16 @@ const previewImageUrl = ref('');
 const detailVisible = ref(false);
 const currentProduct = ref<any>(null);
 const syncModalVisible = ref(false);
+const currentSyncType = ref<'product' | 'fba'>('product');
+
+const openSyncModal = (type: 'product' | 'fba') => {
+  currentSyncType.value = type;
+  syncModalVisible.value = true;
+};
 
 const stores = ref<EccangStoreConfig[]>([]);
+const platformAccounts = ref<string[]>([]);
+const sites = ref<string[]>([]);
 
 // Pagination
 const pagination = reactive({
@@ -328,7 +493,8 @@ const filterForm = reactive({
   name: '',
   sku: '',
   asin: '',
-  storeId: undefined as number | undefined,
+  platformAccount: undefined as string | undefined,
+  site: undefined as string | undefined,
   priceMin: undefined as number | undefined,
   priceMax: undefined as number | undefined,
   inventoryStatus: undefined as string | undefined,
@@ -343,56 +509,91 @@ const columns: TableColumnsType = [
   {
     title: '商品信息',
     key: 'productInfo',
-    width: 250,
+    width: 240,
     fixed: 'left',
     align: 'left',
   },
   {
-    title: '所属店铺',
-    key: 'shopName',
-    width: 150,
+    title: '商品编码',
+    key: 'productCodes',
+    width: 170,
+    align: 'left',
+  },
+  {
+    title: 'SKU统计',
+    key: 'skuStats',
+    width: 80,
     align: 'center',
   },
   {
-    title: '商品单价',
+    title: '平台',
+    key: 'platform',
+    width: 65,
+    align: 'center',
+  },
+  {
+    title: '配送',
+    key: 'fulfillment',
+    width: 65,
+    align: 'center',
+  },
+  {
+    title: '站点',
+    key: 'siteCode',
+    width: 65,
+    align: 'center',
+  },
+  {
+    title: '店铺',
+    key: 'platformAccount',
+    width: 130,
+    align: 'center',
+  },
+  {
+    title: '单价',
     key: 'price',
-    width: 120,
+    width: 100,
     align: 'center',
     sorter: (a: any, b: any) => parseFloat(a.price) - parseFloat(b.price),
   },
   {
     title: 'FBA库存',
     key: 'fbaInventory',
-    width: 100,
+    width: 90,
     align: 'center',
     sorter: (a: any, b: any) => a.fbaInventory - b.fbaInventory,
   },
   {
-    title: '链接',
-    key: 'link',
-    width: 100,
-    align: 'center',
-  },
-  {
     title: '操作',
     key: 'action',
-    width: 100,
+    width: 80,
     fixed: 'right',
     align: 'center',
   },
 ];
 
+const useServerPagination = () =>
+  filterForm.priceMin === undefined &&
+  filterForm.priceMax === undefined &&
+  !filterForm.inventoryStatus &&
+  !filterForm.timeRange;
+
 
 
 // Filter Logic
 const handleFilter = () => {
+  if (useServerPagination()) {
+    pagination.current = 1;
+    fetchProducts();
+    return;
+  }
   loading.value = true;
   // Client-side filtering simulation
   setTimeout(() => {
     let result = [...allData.value];
     
     // Status Filter (Tab)
-    if (activeKey.value) {
+    if (activeKey.value && activeKey.value !== 'all') {
       if (activeKey.value === 'inactive') {
         // Tab "已下架" includes unlisted and archived
         result = result.filter(item => ['inactive', 'archived', 'unlisted'].includes(item.status));
@@ -401,8 +602,8 @@ const handleFilter = () => {
         // Note: We exclude draft/archived/unlisted even if 0 inventory, as requested.
         result = result.filter(item => item.status === 'out_of_stock' || (item.status === 'active' && (item.fbaInventory || 0) <= 0));
       } else if (activeKey.value === 'active') {
-        // Tab "已上架": active status AND inventory > 0
-        result = result.filter(item => item.status === 'active' && (item.fbaInventory || 0) > 0);
+        // Tab "已上架": 仅按状态筛选（易仓同步的 FBA 库存默认为 0，不能作为上架条件）
+        result = result.filter(item => item.status === 'active');
       } else {
         result = result.filter(item => item.status === activeKey.value);
       }
@@ -427,10 +628,20 @@ const handleFilter = () => {
     }
     if (filterForm.asin) {
       const asinQuery = filterForm.asin.toLowerCase();
-      result = result.filter(item => item.asin && item.asin.toLowerCase().includes(asinQuery));
+      result = result.filter(item => {
+        if (item.asin && item.asin.toLowerCase().includes(asinQuery)) return true;
+        if (item.parentAsin && item.parentAsin.toLowerCase().includes(asinQuery)) return true;
+        if (item.variants && item.variants.length > 0) {
+          return item.variants.some(v => v.asin && v.asin.toLowerCase().includes(asinQuery));
+        }
+        return false;
+      });
     }
-    if (filterForm.storeId) {
-      result = result.filter(item => item.storeId === filterForm.storeId);
+    if (filterForm.platformAccount) {
+      result = result.filter(item => item.platformAccount === filterForm.platformAccount);
+    }
+    if (filterForm.site) {
+      result = result.filter(item => item.siteCode === filterForm.site);
     }
     
     // 价格范围筛选
@@ -513,25 +724,31 @@ const handleResetFilter = () => {
   filterForm.name = '';
   filterForm.sku = '';
   filterForm.asin = '';
-  filterForm.storeId = undefined;
+  filterForm.platformAccount = undefined;
+  filterForm.site = undefined;
   filterForm.priceMin = undefined;
   filterForm.priceMax = undefined;
   filterForm.inventoryStatus = undefined;
   filterForm.timeRange = undefined;
   currentSorter.columnKey = '';
   currentSorter.order = '';
-  handleFilter();
+  pagination.current = 1;
+  fetchProducts();
 };
 
 const handleTabChange = () => {
   pagination.current = 1;
-  handleFilter();
+  fetchProducts();
 };
 
 const onPageChange = (page: number, pageSize: number) => {
   pagination.current = page;
   pagination.pageSize = pageSize;
-  handleFilter();
+  if (useServerPagination()) {
+    fetchProducts();
+  } else {
+    handleFilter();
+  }
 };
 
 const handleTableChange = (pag: any, filters: any, sorter: any) => {
@@ -553,47 +770,167 @@ const handleTableChange = (pag: any, filters: any, sorter: any) => {
   handleFilter();
 };
 
+const formatAttributesText = (raw?: string | null) => {
+  if (!raw) return '';
+  try {
+    const attrs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const parts: string[] = [];
+    if (attrs.colors?.length) parts.push(`颜色: ${attrs.colors.join('/')}`);
+    else if (attrs.color) parts.push(`颜色: ${attrs.color}`);
+    if (attrs.sizes?.length) parts.push(`尺码: ${attrs.sizes.join('/')}`);
+    else if (attrs.size) parts.push(`尺码: ${attrs.size}`);
+    if (attrs.fulfillmentType) parts.push(attrs.fulfillmentType);
+    if (attrs.specs) parts.push(attrs.specs);
+    return parts.join(' · ');
+  } catch {
+    return '';
+  }
+};
+
+const mapProductRow = (p: any, idx: number) => {
+  const store = stores.value.find(s => s.id === p.storeId);
+  const asin = p.asin || p.parentAsin || p.spu || p.variants?.[0]?.asin || '-';
+  const rawImage = p.smallImageUrl || p.mainImage || p.image || p.variants?.[0]?.smallImageUrl || p.variants?.[0]?.imageUrl || '';
+  const image = resolveProductImage(rawImage, asin, 'SL75');
+  const rawLargeImage = p.mainImage || p.image || p.variants?.[0]?.imageUrl || p.smallImageUrl || '';
+  const largeImage = resolveProductImage(rawLargeImage, asin, 'SL500');
+  // Parse min and max prices
+  const minPrice = Number(p.minPrice ?? p.variants?.[0]?.price ?? p.price ?? 0);
+  const maxPrice = Number(p.maxPrice ?? p.variants?.[0]?.price ?? p.price ?? 0);
+  
+  let displayPrice = `$${minPrice.toFixed(2)}`;
+  if (maxPrice > minPrice) {
+    displayPrice = `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+  }
+  const siteCode = p.siteCode || '';
+  const platformAccount = p.platformAccount || p.amazonShopName || '';
+  const attributesText = formatAttributesText(p.attributesJson || p.optionsJson);
+
+  const variants = p.variants || [];
+  const skuTotal = variants.length;
+  const skuActive = variants.filter((v: any) => v.status === 'active' || v.status === '1').length;
+  const skuInactive = skuTotal - skuActive;
+
+  // Extract unique SKUs and ASINs from variants
+  const uniqueSkus = [...new Set(variants.map((v: any) => v.sku).filter(Boolean))];
+  const uniqueAsins = [...new Set(variants.map((v: any) => v.asin).filter(Boolean))];
+
+  const hasMultipleSkus = uniqueSkus.length > 1;
+  const hasMultipleAsins = uniqueAsins.length > 1;
+
+  const displaySku = hasMultipleSkus 
+    ? `多 SKU (共 ${uniqueSkus.length} 个)` 
+    : (uniqueSkus[0] || p.sku || p.platformSku || '-');
+
+  const parentAsinVal = p.parentAsin || p.spu || p.handle || '';
+
+  const displayAsin = hasMultipleAsins 
+    ? (parentAsinVal ? `${parentAsinVal} (共 ${uniqueAsins.length} 个)` : `多 ASIN (共 ${uniqueAsins.length} 个)`)
+    : (uniqueAsins[0] || asin || '-');
+
+  const skuTooltip = hasMultipleSkus
+    ? (uniqueSkus.length > 5 ? `${uniqueSkus.slice(0, 5).join(', ')} 等共 ${uniqueSkus.length} 个 SKU` : uniqueSkus.join(', '))
+    : displaySku;
+
+  const asinTooltip = hasMultipleAsins
+    ? (uniqueAsins.length > 5 ? `${uniqueAsins.slice(0, 5).join(', ')} 等共 ${uniqueAsins.length} 个 ASIN` : uniqueAsins.join(', '))
+    : displayAsin;
+
+  return {
+    key: p.id || idx,
+    id: p.id || idx,
+    name: p.name || p.title,
+    image,
+    largeImage,
+    imageIsPlaceholder: isPlaceholderImage(rawImage) && !amazonImageFromAsin(asin),
+    sku: p.sku || p.platformSku || p.variants?.[0]?.sku || '-',
+    asin,
+    parentAsin: p.parentAsin || p.spu || p.asin || p.variants?.[0]?.asin || '-',
+    spu: p.parentAsin || p.handle || p.spu || '',
+    handle: p.parentAsin || p.handle || '',
+    variantCount: p.variantCount ?? p.variants?.length ?? 0,
+    price: String(minPrice),
+    displayPrice,
+    vendor: p.vendor || 'Amazon',
+    platform: store?.platform || p.platform || 'Amazon',
+    siteCode,
+    platformAccount,
+    link: asin && asin !== '-' ? `https://www.amazon.com/dp/${asin}` : '#',
+    status: p.status || 'active',
+    fbaInventory: p.fbaInventory ?? p.inventory ?? p.variants?.[0]?.fbaInventory ?? p.variants?.[0]?.inventoryQuantity ?? 0,
+    createTime: p.createdAt,
+    createdAt: p.createdAt,
+    shopName: p.storeName || store?.storeName || '默认店铺',
+    productType: p.productType || p.fulfillmentType || '',
+    attributesText,
+    optionsJson: p.attributesJson || p.optionsJson || '',
+    categoryPath: p.categoryPath || '',
+    storeId: p.storeId || 1,
+    variants,
+    skuTotal,
+    skuActive,
+    skuInactive,
+    displaySku,
+    displayAsin,
+    skuTooltip,
+    asinTooltip,
+    hasMultipleSkus,
+    hasMultipleAsins,
+    logs: [],
+  };
+};
+
+const fetchStatistics = async () => {
+  try {
+    const apiParams: Record<string, unknown> = {};
+    if (filterForm.name) apiParams.keyword = filterForm.name;
+    else if (filterForm.sku) apiParams.keyword = filterForm.sku;
+    else if (filterForm.asin) apiParams.keyword = filterForm.asin;
+    if (filterForm.platformAccount) apiParams.platformAccount = filterForm.platformAccount;
+    if (filterForm.site) apiParams.site = filterForm.site;
+
+    const statsRes = await getEccangProductStatistics(apiParams);
+    if (statsRes) {
+      Object.assign(statistics, statsRes);
+    }
+  } catch (e) {
+    console.error('Failed to fetch statistics', e);
+  }
+};
+
 // Fetch Data
 const fetchProducts = async () => {
   if (loading.value) return;
   loading.value = true;
   try {
-    // Fix #1: Pass filter params to backend to reduce data transfer
-    const apiParams: any = {};
+    fetchStatistics();
+
+    const apiParams: Record<string, unknown> = {};
     if (filterForm.name) apiParams.keyword = filterForm.name;
-    if (filterForm.storeId) apiParams.storeId = filterForm.storeId;
-    // Backend supports 'active'/'draft' status filter
-    if (activeKey.value && activeKey.value !== 'out_of_stock' && activeKey.value !== 'suspected_deleted') {
+    else if (filterForm.sku) apiParams.keyword = filterForm.sku;
+    else if (filterForm.asin) apiParams.keyword = filterForm.asin;
+    if (filterForm.platformAccount) apiParams.platformAccount = filterForm.platformAccount;
+    if (filterForm.site) apiParams.site = filterForm.site;
+    if (activeKey.value && activeKey.value !== 'all') {
       apiParams.status = activeKey.value;
     }
-    const products = await getEccangProducts(apiParams);
-    const mapped = products.map((p: any, idx: number): any => {
-      // Find matching store for this product (used for admin links)
-      const store = stores.value.find(s => s.id === p.storeId);
+    if (useServerPagination()) {
+      apiParams.page = pagination.current - 1;
+      apiParams.size = pagination.pageSize;
+    }
 
-      return {
-        key: p.id || idx,
-        id: p.id || idx,
-        name: p.name || p.title,
-        image: p.mainImage || p.image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%23f1f5f9" width="200" height="200"/%3E%3Cpath fill="%2394a3b8" d="M80 60h40c6.6 0 12 5.4 12 12v56c0 6.6-5.4 12-12 12H80c-6.6 0-12-5.4-12-12V72c0-6.6 5.4-12 12-12zm20 10a14 14 0 100 28 14 14 0 000-28zm-24 70h48l-12-16-8 10.7L92 120l-16 20z"/%3E%3C/svg%3E',
-        sku: p.sku || '-',
-        asin: p.asin || '-',
-        price: p.price?.toString() || '0.00',
-        displayPrice: `$${parseFloat(p.price || '0').toFixed(2)}`,
-        vendor: p.vendor || 'Amazon', 
-        platform: store?.platform || p.platform || 'Amazon',
-        link: p.link || `https://www.amazon.com/dp/${p.asin}`, 
-        status: p.status || 'active',
-        fbaInventory: p.fbaInventory || p.inventory || 0,
-        createTime: p.createdAt,
-        shopName: p.amazonShopName || store?.amazonShopName || store?.storeName || 'Store A',
-        storeId: p.storeId || 1,
-        variants: p.variants || [],
-        logs: []
-      };
-    });
+    const productsRes = await getEccangProducts(apiParams);
+    const isPaged = !Array.isArray(productsRes) && !!productsRes?.content;
+    const products = isPaged ? productsRes.content : (Array.isArray(productsRes) ? productsRes : []);
+    const mapped = products.map(mapProductRow);
+
     allData.value = mapped;
-    handleFilter();
+    if (isPaged) {
+      pagination.total = productsRes.totalElements ?? mapped.length;
+      displayData.value = mapped;
+    } else {
+      handleFilter();
+    }
   } catch (e) {
     if (e && (e as any).code === 'ERR_CANCELED') return;
     console.error(e);
@@ -648,7 +985,19 @@ onMounted(async () => {
   } catch (e) {
     console.error(e);
   }
-  fetchProducts(); // Fetch products AFTER stores are loaded (or concurrently if we used Promise.all, but sequential is safer for mapping)
+  try {
+     const accountsRes = await getEccangPlatformAccounts();
+     platformAccounts.value = accountsRes || [];
+  } catch (e) {
+    console.error(e);
+  }
+  try {
+     const sitesRes = await getEccangSites();
+     sites.value = sitesRes || [];
+  } catch (e) {
+    console.error(e);
+  }
+  fetchProducts(); // Fetch products AFTER stores, accounts and sites are loaded
 });
 
 </script>
@@ -660,12 +1009,47 @@ onMounted(async () => {
 */
 .product-list-page {
   height: 100%;
-  padding: 8px;
+  padding: 12px 16px;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+
+    .page-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: #64748b;
+    }
+  }
+
+  .status-tabs-bar {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
 
   /* Refined Glass Card */
   .glass-card {
@@ -865,7 +1249,7 @@ onMounted(async () => {
 
     :deep(.ant-table-tbody > tr > td) {
       border-bottom: 1px solid #f8fafc;
-      padding: 8px 8px;
+      padding: 10px 12px;
       transition: all 0.2s;
     }
 
@@ -874,39 +1258,200 @@ onMounted(async () => {
     }
   }
 
-  /* User Info Cell (Product Info) */
-  .user-info-cell {
+  .product-info-cell {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    
-    
-    .avatar-wrapper {
-       /* Custom avatar styles for product image */
-       display: flex;
-       align-items: center;
-       justify-content: center;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 4px 0;
+  }
+
+  .product-thumb {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    cursor: pointer;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
-    
-    .info-content {
-      overflow: hidden;
-      min-width: 0;
-      .user-name {
-        font-weight: 600;
-        color: #1e293b;
-        font-size: 14px;
-        margin-bottom: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .user-id {
-        font-size: 11px;
-        color: #94a3b8;
-        font-family: 'JetBrains Mono', monospace;
-      }
+    &.is-placeholder {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
+
+    .thumb-badge {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.65);
+      color: #fff;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+  }
+
+  .product-meta {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .product-title {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 13px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 4px;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  .product-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .code-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #f0f7ff;
+      border-color: #3b82f6;
+      color: #2563eb;
+    }
+  }
+
+  .product-sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    row-gap: 4px;
+
+    .platform-tag {
+      margin: 0;
+      font-size: 10px;
+      line-height: 18px;
+      border-radius: 4px;
+    }
+
+    .spu-text {
+      font-size: 11px;
+      color: #94a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .site-account-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .site-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #f0fdf4;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .account-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .account-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.2;
+  }
+
+  .shop-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .account-text {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .category-text {
+    font-size: 11px;
+    color: #7c3aed;
+    font-weight: 500;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .price-text {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .inventory-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+
+    &.out { background: #fef2f2; color: #dc2626; }
+    &.low { background: #fff7ed; color: #ea580c; }
+    &.mid { background: #fefce8; color: #ca8a04; }
+    &.high { background: #ecfdf5; color: #16a34a; }
   }
 
   /* Status Tags */
@@ -923,13 +1468,35 @@ onMounted(async () => {
   /* Action Buttons */
   .action-btns-wrapper {
     display: flex;
-    gap: 4px;
+    align-items: center;
     justify-content: center;
-    .detail-btn {
-      border-radius: 4px;
+    gap: 8px;
+    
+    .action-link {
+      color: #3b82f6;
+      font-size: 13px;
       font-weight: 500;
-      height: 24px;
-      padding: 0 8px;
+      transition: all 0.2s;
+      
+      &:hover {
+        color: #1d4ed8;
+      }
+      
+      &.disabled {
+        color: #94a3b8;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      
+      &.detail {
+        color: #ef4444;
+        &:hover { color: #b91c1c; }
+      }
+    }
+    
+    .divider {
+      color: #cbd5e1;
+      font-size: 12px;
     }
   }
 

@@ -124,7 +124,7 @@ app:
   initial-admin:
     enabled: true  # 是否启用初始管理员账号自动创建
     username: ${INITIAL_ADMIN_USERNAME:admin}
-    email: ${INITIAL_ADMIN_EMAIL:admin@example.com}
+    email: ${INITIAL_ADMIN_EMAIL:wenguangfeifan@outlook.com}
     password: ${INITIAL_ADMIN_PASSWORD:yijia6688}  # 生产环境必须通过环境变量覆盖
     role-name: ${INITIAL_ADMIN_ROLE_NAME:超级管理员}
 

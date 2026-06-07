@@ -557,7 +557,7 @@ public class EccangSyncService {
 
                 if ((item.getImageUrl() == null || item.getImageUrl().isEmpty())
                         && item.getEccangVariantId() != null) {
-                    variantRepository.findByEccangVariantId(item.getEccangVariantId())
+                    variantRepository.findById(item.getEccangVariantId())
                             .ifPresent(var -> item.setImageUrl(var.getImageUrl()));
                 }
             }
@@ -796,5 +796,98 @@ public class EccangSyncService {
                 return null;
             }
         }
+    }
+
+    public EccangOrder syncSingleOrder(Long storeId, String orderIdentifier) {
+        EccangStore store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("Store not found"));
+
+        String apiDomainUrl = store.getStoreName();
+        String accessToken = "mock_token";
+        String storeName = store.getStoreName();
+        String shopDomain = store.getStoreName();
+
+        String queryStr = "name:" + orderIdentifier + " OR id:" + orderIdentifier;
+        if (orderIdentifier.startsWith("gid://")) {
+            queryStr = "id:" + orderIdentifier;
+        }
+
+        HttpHeaders headers = createHeaders(accessToken);
+        String graphqlUrl = buildGraphqlUrl(apiDomainUrl);
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        
+        String query = """
+                query getOrders($query: String) {
+                  orders(first: 1, query: $query) {
+                    edges {
+                      node {
+                        id legacyResourceId name createdAt updatedAt processedAt closedAt cancelledAt cancelReason
+                        displayFinancialStatus displayFulfillmentStatus email phone note tags
+                        subtotalPriceSet { shopMoney { amount currencyCode } }
+                        totalTaxSet { shopMoney { amount currencyCode } }
+                        totalDiscountsSet { shopMoney { amount currencyCode } }
+                        totalShippingPriceSet { shopMoney { amount currencyCode } }
+                        totalPriceSet { shopMoney { amount currencyCode } }
+                        discountCodes
+                        customer { id email firstName lastName phone }
+                        shippingAddress { name address1 address2 city province provinceCode country countryCodeV2 zip phone }
+                        lineItems(first: 50) {
+                            nodes {
+                                id sku title variantTitle quantity
+                                originalUnitPriceSet { shopMoney { amount } }
+                                variant { id sku image { url } product { id } }
+                                requiresShipping fulfillmentStatus vendor
+                            }
+                        }
+                        transactions(first: 10) {
+                            id kind status gateway amountSet { shopMoney { amount currencyCode } } createdAt paymentId
+                        }
+                        fulfillments {
+                            id createdAt status displayStatus inTransitAt deliveredAt estimatedDeliveryAt
+                            trackingInfo { number url }
+                        }
+                        refunds {
+                            id createdAt note totalRefundedSet { shopMoney { amount } }
+                            refundLineItems(first: 20) {
+                                nodes { id lineItem { id } quantity subtotalSet { shopMoney { amount } } }
+                            }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+        requestBody.put("query", query);
+        ObjectNode variables = objectMapper.createObjectNode();
+        variables.put("query", queryStr);
+        requestBody.set("variables", variables);
+
+        try {
+            HttpEntity<ObjectNode> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<JsonNode> response = restTemplate.exchange(graphqlUrl, HttpMethod.POST, entity, JsonNode.class);
+            JsonNode body = response.getBody();
+            if (body != null && body.has("data")) {
+                JsonNode edges = body.path("data").path("orders").path("edges");
+                if (edges.isArray() && !edges.isEmpty()) {
+                    JsonNode orderNode = edges.get(0).path("node");
+                    
+                    TransactionTemplate persistTx = new TransactionTemplate(transactionManager);
+                    persistTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                    OrderGraphqlPersistOutcome outcome = persistTx.execute(status -> 
+                        persistEccangOrderGraphqlPayload(storeId, storeName, shopDomain, orderNode, true)
+                    );
+                    
+                    if (outcome != null && outcome.localOrderId() != null) {
+                        runClassificationInSeparateTransaction(outcome.localOrderId());
+                        return orderRepository.findById(outcome.localOrderId()).orElse(null);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to sync single order by identifier {}: {}", orderIdentifier, e.getMessage(), e);
+            throw new RuntimeException("Eccang API 调用或解析失败: " + e.getMessage());
+        }
+        
+        throw new RuntimeException("在易仓系统中未找到对应订单: " + orderIdentifier);
     }
 }

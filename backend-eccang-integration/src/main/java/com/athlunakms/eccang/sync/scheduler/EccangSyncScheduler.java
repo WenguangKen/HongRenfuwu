@@ -1,51 +1,29 @@
 package com.athlunakms.eccang.sync.scheduler;
 
-import com.athlunakms.eccang.order.service.OrderClassificationService;
-import com.athlunakms.eccang.order.service.EccangOrderService;
 import com.athlunakms.eccang.product.service.EccangProductService;
 import com.athlunakms.eccang.store.entity.EccangStore;
 import com.athlunakms.eccang.store.repository.EccangStoreRepository;
 
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(prefix = "eccang.sync.scheduler", name = "enabled", havingValue = "true")
 public class EccangSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(EccangSyncScheduler.class);
     private final EccangStoreRepository storeRepository;
-    private final EccangOrderService orderService;
     private final EccangProductService productService;
-    private final OrderClassificationService orderClassificationService;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    @PostConstruct
-    public void repairOnStartup() {
-        log.info("[Startup] Running delivered status repair...");
-        this.orderClassificationService.repairDeliveredStatus();
-    }
-
-    @Scheduled(cron="0 0,30 * * * ?")
-    public void syncOrders() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = now.withSecond(0).withNano(0);
-        LocalDateTime startTime = endTime.minusHours(2L);
-        log.info("=".repeat(80));
-        log.info("[OrderSync] Starting order sync | Window: {} \u2192 {}", (Object)startTime.format(FORMATTER), (Object)endTime.format(FORMATTER));
-        this.runForAllStores("OrderSync", storeId -> {
-            if (this.orderService.isSyncRunning(storeId)) {
-                log.info("[OrderSync] \u26a0 Skipping store {} (ID: {}): manual sync in progress", "store", storeId);
-                return;
-            }
-            this.orderService.syncOrders(storeId, startTime, endTime);
-        });
-        this.orderClassificationService.repairDeliveredStatus();
-    }
+    @Value("${eccang.sync.store-delay-ms:3000}")
+    private long storeDelayMs;
 
     @Scheduled(cron="0 5 * * * ?")
     public void syncProducts() {
@@ -68,12 +46,16 @@ public class EccangSyncScheduler {
         int failureCount = 0;
         for (EccangStore store : activeStores) {
             try {
+                if (this.productService.isSyncRunning(store.getId())) {
+                    log.warn("[{}] Store {} (ID: {}) sync already running, skipping", taskName, store.getStoreName(), store.getId());
+                    continue;
+                }
                 log.info("[{}] \u2192 Syncing store: {} (ID: {})", new Object[]{taskName, store.getStoreName(), store.getId()});
                 task.execute(store.getId());
                 ++successCount;
-                log.info("[{}] \u2713 Store {} synced", (Object)taskName, (Object)store.getStoreName());
+                log.info("[{}] \u2713 Store {} sync task submitted", (Object)taskName, (Object)store.getStoreName());
                 if (activeStores.size() <= 1) continue;
-                Thread.sleep(1000L);
+                Thread.sleep(storeDelayMs);
             }
             catch (Exception e) {
                 ++failureCount;
@@ -84,11 +66,9 @@ public class EccangSyncScheduler {
         log.info("=".repeat(80));
     }
 
-    public EccangSyncScheduler(EccangStoreRepository storeRepository, EccangOrderService orderService, EccangProductService productService, OrderClassificationService orderClassificationService) {
+    public EccangSyncScheduler(EccangStoreRepository storeRepository, EccangProductService productService) {
         this.storeRepository = storeRepository;
-        this.orderService = orderService;
         this.productService = productService;
-        this.orderClassificationService = orderClassificationService;
     }
 
     @FunctionalInterface

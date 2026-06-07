@@ -54,23 +54,13 @@ public class InfluencerStatusCleanupService {
 
     @Transactional
     public void performCleanup() {
-        // 1. Mark influencers WITH orders as COOPERATING
-        // We check both last_sample_at field and the presence of orders in
-        // influencer_sample_order table
+        // 订单表已移除，仅依据内容推进记录做一次性状态修正
         int cooperatingUpdated = jdbcTemplate.update(
                 "UPDATE influencer i SET i.status = 'COOPERATING' " +
                         "WHERE i.stage != 'TRASH' AND i.status NOT IN ('BLACKLIST', 'TERMINATED') " +
-                        "AND (i.last_sample_at IS NOT NULL OR EXISTS (SELECT 1 FROM influencer_sample_order iso WHERE iso.influencer_id = i.id))");
+                        "AND (i.has_content = 1 OR i.last_content_at IS NOT NULL)");
 
-        // 2. Mark influencers WITHOUT orders as PENDING
-        int pendingUpdated = jdbcTemplate.update(
-                "UPDATE influencer i SET i.status = 'PENDING' " +
-                        "WHERE i.stage != 'TRASH' AND i.status NOT IN ('BLACKLIST', 'TERMINATED') " +
-                        "AND i.last_sample_at IS NULL AND NOT EXISTS (SELECT 1 FROM influencer_sample_order iso WHERE iso.influencer_id = i.id)");
-
-        // 3. Log the cleanup in the global log if possible, or just through the logger
-        log.info("[StatusCleanup] Batch update finished. Updated to COOPERATING: {}, Updated to PENDING: {}",
-                cooperatingUpdated, pendingUpdated);
+        log.info("[StatusCleanup] Batch update finished. Updated to COOPERATING: {}", cooperatingUpdated);
 
         // Add a generic log entry for the cleanup
         try {

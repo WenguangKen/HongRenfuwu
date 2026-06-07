@@ -90,12 +90,6 @@ export default defineConfig(({ mode }) => {
           target: 'http://127.0.0.1:8081',
           changeOrigin: true,
         },
-        // Webhook 服务 (端口 8083)
-        '/api/webhook': {
-          target: 'http://127.0.0.1:8083',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/webhook/, ''),
-        },
         // 用户权限服务 (端口 8080) - 兜底
         '/api': {
           target: 'http://127.0.0.1:8080',

@@ -20,5 +20,8 @@ extends JpaRepository<InfluencerReadOnly, Long> {
 
     @Query(value="SELECT i FROM InfluencerReadOnly i WHERE LOWER(i.nickName) = LOWER(:nickName)")
     public Optional<InfluencerReadOnly> findByNickNameIgnoreCase(@Param(value="nickName") String var1);
+
+    @Query(value="SELECT i FROM InfluencerReadOnly i WHERE LOWER(i.defaultHandle) = LOWER(:defaultHandle)")
+    public Optional<InfluencerReadOnly> findByDefaultHandleIgnoreCase(@Param(value="defaultHandle") String defaultHandle);
 }
 

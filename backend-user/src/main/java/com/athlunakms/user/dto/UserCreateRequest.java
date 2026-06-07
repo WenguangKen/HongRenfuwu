@@ -21,6 +21,15 @@ public class UserCreateRequest {
     @NotNull(message="\u89d2\u8272ID\u5217\u8868\u4e0d\u80fd\u4e3a\u7a7a")
     private @NotNull(message="\u89d2\u8272ID\u5217\u8868\u4e0d\u80fd\u4e3a\u7a7a") List<Long> roleIds;
     private String avatarUrl;
+    private List<String> allocatedStores;
+
+    public List<String> getAllocatedStores() {
+        return this.allocatedStores;
+    }
+
+    public void setAllocatedStores(List<String> allocatedStores) {
+        this.allocatedStores = allocatedStores;
+    }
 
     public String getUsername() {
         return this.username;

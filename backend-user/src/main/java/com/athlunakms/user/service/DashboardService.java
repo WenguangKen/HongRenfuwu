@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class DashboardService {
     private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
+    private static final boolean ORDER_STATS_ENABLED = false;
     private final JdbcTemplate jdbcTemplate;
 
     public DashboardStatsDto getStats() {
@@ -68,6 +69,9 @@ public class DashboardService {
     }
 
     private Long queryConversionOrders30Days() {
+        if (!ORDER_STATS_ENABLED) {
+            return 0L;
+        }
         try {
             String sql = "    SELECT COUNT(*)\n    FROM influencer_conversion_order\n    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)\n";
             Long count = (Long)this.jdbcTemplate.queryForObject(sql, Long.class);
@@ -80,6 +84,9 @@ public class DashboardService {
     }
 
     private BigDecimal queryOrderGMV30Days() {
+        if (!ORDER_STATS_ENABLED) {
+            return BigDecimal.ZERO;
+        }
         try {
             String sql = "    SELECT COALESCE(SUM(total_price), 0)\n    FROM influencer_conversion_order\n    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)\n";
             BigDecimal gmv = (BigDecimal)this.jdbcTemplate.queryForObject(sql, BigDecimal.class);
@@ -92,6 +99,9 @@ public class DashboardService {
     }
 
     private BigDecimal queryCommission30Days() {
+        if (!ORDER_STATS_ENABLED) {
+            return BigDecimal.ZERO;
+        }
         try {
             String sql = "    SELECT COALESCE(SUM(\n        CASE\n            WHEN commission_amount IS NOT NULL THEN commission_amount\n            ELSE total_price * COALESCE(commission_rate, 15) / 100\n        END\n    ), 0)\n    FROM influencer_conversion_order\n    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)\n";
             BigDecimal commission = (BigDecimal)this.jdbcTemplate.queryForObject(sql, BigDecimal.class);
@@ -104,6 +114,9 @@ public class DashboardService {
     }
 
     private Long queryTodayOrders() {
+        if (!ORDER_STATS_ENABLED) {
+            return 0L;
+        }
         try {
             String sql = "    SELECT COUNT(*)\n    FROM influencer_conversion_order\n    WHERE financial_status = 'paid'\n      AND DATE(order_created_at) = CURDATE()\n";
             Long count = (Long)this.jdbcTemplate.queryForObject(sql, Long.class);
@@ -116,6 +129,9 @@ public class DashboardService {
     }
 
     private BigDecimal queryTodayGMV() {
+        if (!ORDER_STATS_ENABLED) {
+            return BigDecimal.ZERO;
+        }
         try {
             String sql = "    SELECT COALESCE(SUM(total_price), 0)\n    FROM influencer_conversion_order\n    WHERE financial_status = 'paid'\n      AND DATE(order_created_at) = CURDATE()\n";
             BigDecimal gmv = (BigDecimal)this.jdbcTemplate.queryForObject(sql, BigDecimal.class);
@@ -128,6 +144,9 @@ public class DashboardService {
     }
 
     private BigDecimal queryTodaySettledCommission() {
+        if (!ORDER_STATS_ENABLED) {
+            return BigDecimal.ZERO;
+        }
         try {
             String sql = "    SELECT COALESCE(SUM(commission_amount), 0)\n    FROM influencer_conversion_order\n    WHERE commission_status = 'settled'\n      AND DATE(updated_at) = CURDATE()\n";
             BigDecimal commission = (BigDecimal)this.jdbcTemplate.queryForObject(sql, BigDecimal.class);
@@ -150,8 +169,11 @@ public class DashboardService {
         ArrayList<BigDecimal> commissionData = new ArrayList<BigDecimal>();
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
-            String sql = "    SELECT\n        DATE(order_created_at) as order_date,\n        COUNT(*) as order_count,\n        COALESCE(SUM(total_price), 0) as gmv,\n        COALESCE(SUM(commission_amount), 0) as commission\n    FROM influencer_conversion_order\n    WHERE order_created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)\n      AND order_created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)\n    GROUP BY DATE(order_created_at)\n    ORDER BY order_date ASC\n";
-            List<Map<String, Object>> results = this.jdbcTemplate.queryForList(sql, days);
+            List<Map<String, Object>> results = ORDER_STATS_ENABLED
+                    ? this.jdbcTemplate.queryForList(
+                            "    SELECT\n        DATE(order_created_at) as order_date,\n        COUNT(*) as order_count,\n        COALESCE(SUM(total_price), 0) as gmv,\n        COALESCE(SUM(commission_amount), 0) as commission\n    FROM influencer_conversion_order\n    WHERE order_created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)\n      AND order_created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)\n    GROUP BY DATE(order_created_at)\n    ORDER BY order_date ASC\n",
+                            days)
+                    : List.of();
             LocalDate today = LocalDate.now();
             for (int i = days - 1; i >= 0; --i) {
                 LocalDate date = today.minusDays(i);

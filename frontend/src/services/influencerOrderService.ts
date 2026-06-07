@@ -136,7 +136,7 @@ export interface OrderStats {
 
 // ==================== API 调用 ====================
 
-const API_BASE = '/shopify/v1/influencer-orders';
+const API_BASE = '/eccang/v1/influencer-orders';
 
 /**
  * 获取样品单列表
@@ -340,7 +340,7 @@ export interface OrderLog {
  * 获取订单完整详情（包含付款、退款、日志等）
  */
 export async function getOrderDetails(orderId: number, orderType: string = 'sample'): Promise<OrderDetailResponse> {
-    const response = await http.get<OrderDetailResponse>(`/shopify/v1/orders/${orderId}/details`, {
+    const response = await http.get<OrderDetailResponse>(`/eccang/v1/orders/${orderId}/details`, {
         params: { orderType }
     });
     return response.data;
@@ -454,6 +454,36 @@ export async function exportSampleOrders(params: any, filename: string = '样品
     window.URL.revokeObjectURL(url);
 }
 
+export async function importSampleOrderById(storeId: string | number, orderId: string): Promise<{ success: boolean; message: string; data?: any }> {
+    const response = await http.post<{ success: boolean; message: string; data?: any }>(`${API_BASE}/sample/import-by-id`, {
+        storeId: String(storeId),
+        orderId
+    });
+    return response.data;
+}
+
+export async function importConversionOrdersExcel(file: File, operatorId?: number): Promise<{
+    success: boolean;
+    batchNo: string;
+    totalCount: number;
+    successCount: number;
+    skippedCount: number;
+    failedCount: number;
+    errors: Array<{ rowNum: number; orderId: string; error: string }>;
+}> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (operatorId) {
+        formData.append('operatorId', String(operatorId));
+    }
+    const response = await http.post(`${API_BASE}/conversion/import-excel`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return response.data;
+}
+
 export default {
     getSampleOrders,
     getSampleOrderDetail,
@@ -467,5 +497,7 @@ export default {
     getSampleOrdersByInfluencer,
     updateSampleOrderCoopPrice,
     exportSampleOrders,
+    importSampleOrderById,
+    importConversionOrdersExcel,
 };
 

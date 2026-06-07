@@ -1,0 +1,52 @@
+=== USERS ===
+id=1, username=Admin_TOP, email=ITpcO2a6JP/D0OPse1fYzQD+QOea9PhSBKuqHfzi8l7s72zdWnAHNKhnSYFC9WSd8iSX+UWC
+id=3, username=Mia1, email=OH5qMOgwLhPO69lY7tWa8RjFbUS6+lc6O04Uihl0pwBQNq/+AEGiy9w=
+id=4, username=athluna123, email=XAPHhPnh4HuYLF/vvNPfyZPtQ4Iz1dWmj32ZebpkECLQsnA92kOx3wXFgBPu7Fq7lZmlgw==
+id=5, username=林秋敏, email=fuARa+H89SitxORsEhNa+6jMREgo1E8qe3Lk2xQF43aLGuIMtu3DiXr9N9hL2Qb4gA+7
+id=6, username=庄坚强, email=elNpLvhFocoPLWRk+2gRRPG0siG3HJYquJueSf4GogrY3msd5hK9eKcuwAM=
+id=7, username=廖颖慧, email=1ZqE5nFzbzYl0yLgMwdk+A3dfbZsWMJj4Y6ohjpu9khE6fOTfCGVAY+XfzGp4yVOEC/k5RM=
+id=8, username=谭茜怡, email=iksBPHjdR6nDKXulZQv2qerdXBs574+cnaVVcv+4Ck4sUFo7o99GxxQXZhvKrZF6fusU
+id=9, username=欧阳秀军, email=k5Fhu2N4Hir6Z4KB1Hht/PLOdh/vJouayuB1ET/6WL2TiHl5w53Fa9OK0gD6T+jl170pHgn7
+id=10, username=丘建宏, email=Yqa+3c7qj7QfyzwyIxfEQUEUUn1Spjzbze4nzyuLntegOysFHgHO3oFhBhxamOw7IJzb91s=
+id=11, username=吴晟宁, email=yhNrIQe8u3q9XvBubmPLylF6lBQKXU0dbRbeamXsT+ZxV8zsBuqiD9RQxOT5c8g8aOn7Wwg=
+id=12, username=姚峙冰, email=sJ4pXrWdRjG11UiWLWel0ZWrnKyd40woYXAFI8L+92KOsJV96d5HN+JU+TCtpmby5pGlLQ==
+id=13, username=连嘉琳, email=oxXCdlSZ2y+3J69zdGfN+zXisfb/ho0QiRHjjO7uKcjAC6MPUuf/67BmYH/3sDiij/i6dQ==
+id=14, username=蔡非儿, email=Sz5zv8IrurXLmXeZrTq3UfmpatG2t2VvqFLJgUehTMkSZu+k/dOrr03rrxnXGpR/aqY=
+id=15, username=严炀炀, email=X3/WLV9lgiJbPnCemqmWwHkRsBDBXpgtPCsoNa7bt93qTKv/VuFvhs/P5G7bJEIay8fzOHc=
+id=16, username=Emma Perry, email=DguyCOEJFBiB4uqffKHuVrWjksbCpYiNoTS/XZL9yzfjdDbPkcEgvRlBYWwH5ejiN5g=
+id=17, username=陈超容, email=XRAVvhXWq4EEPptD3bheEj208OziLhBBkGcl3t9Nm1hiaUaPU//LjaGH05MlgmWv9JSFJ8Km
+id=18, username=余惜演, email=Lwz4qtQSwmCFO0Ad48CkdMX2qmkUPCq4SOSXIdbHh0vVtjzlLy9o05lPlmKjlVLV3A==
+id=19, username=罗钰颖, email=9/oUMtpVlJT501mdZi4IYxvTO0oVvIlQN+Q0T+5PEIN4eTQQWKdddtg028BfiorAcWzX
+id=20, username=Textad, email=/U2cRvEAhuBhP5NZGDMHl6xNSoUTwWhCse7X74tAg5ixwN1ZyiH1rMTrDwVFg8VmvKLpgA==
+
+=== ROLES ===
+id=1, name=超级管理员, description=Super Admin
+id=13, name=IT, description=
+id=14, name=红人专员, description=红人管理，订单创建，折扣码创建，佣金发起
+id=16, name=建宏, description=
+id=17, name=投放组, description=
+id=18, name=社媒组, description=
+id=19, name=商品组, description=
+id=20, name=红人实习生/Agency, description=
+id=21, name=HRBP, description=
+id=22, name=运营组, description=
+
+=== USER_ROLES ===
+user_id=1, role_id=1
+user_id=2, role_id=1
+user_id=5, role_id=1
+user_id=6, role_id=13
+user_id=7, role_id=14
+user_id=8, role_id=14
+user_id=9, role_id=13
+user_id=10, role_id=16
+user_id=11, role_id=17
+user_id=12, role_id=19
+user_id=13, role_id=18
+user_id=14, role_id=18
+user_id=15, role_id=20
+user_id=16, role_id=20
+user_id=17, role_id=17
+user_id=18, role_id=21
+user_id=19, role_id=22
+user_id=20, role_id=22

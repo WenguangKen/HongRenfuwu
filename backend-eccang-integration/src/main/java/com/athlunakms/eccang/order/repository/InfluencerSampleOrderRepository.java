@@ -43,5 +43,9 @@ JpaSpecificationExecutor<InfluencerSampleOrder> {
     public List<InfluencerSampleOrder> findByInfluencerIdOrderByCreatedAtDesc(Long var1);
 
     public Optional<InfluencerSampleOrder> findByEccangOrderId(String var1);
+
+    public boolean existsByOrderName(String orderName);
+
+    public boolean existsByEccangOrderId(String eccangOrderId);
 }
 

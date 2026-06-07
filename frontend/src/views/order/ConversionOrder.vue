@@ -245,6 +245,9 @@
             <a-button class="premium-btn-small" v-permission="'order.conversion.export'" @click="handleExport">
               <template #icon><export-outlined /></template>导出
             </a-button>
+            <a-button type="primary" ghost class="premium-btn-small" @click="openImportExcelModal" v-permission="'order.conversion.sync'">
+              <template #icon><upload-outlined /></template>导入转化单
+            </a-button>
           </a-space>
         </div>
       </template>
@@ -777,6 +780,89 @@
         </a-space>
       </div>
     </a-modal>
+
+    <!-- 导入转化单弹窗 -->
+    <a-modal
+      v-model:open="importExcelModalVisible"
+      title="导入转化订单"
+      :footer="null"
+      class="premium-modal influencer-create-modal"
+      width="600px"
+      centered
+    >
+      <div class="ic-modal-header glass-header" style="border-radius: 12px 12px 0 0;">
+        <div class="ic-header-left">
+          <div class="ic-header-icon-wrapper" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <UploadOutlined />
+          </div>
+          <div class="ic-header-text">
+            <div class="ic-header-title">导入转化订单</div>
+            <div class="ic-header-subtitle">支持 Excel (.xls, .xlsx) 和 CSV 文件格式</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="ic-modal-body" style="background: #fff; padding: 24px;">
+        <div style="margin-bottom: 20px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; color: #166534; font-size: 13px;">
+          <div style="font-weight: 700; margin-bottom: 4px;">导入说明：</div>
+          <div>1. 必须包含字段：订单ID/订单编号/Shopify Order Number、订单金额/总金额、分佣金额/佣金金额、红人Handle/红人社媒账号。</div>
+          <div>2. 重复校验：如果导入的订单ID在样品单或转化单中已存在，则会自动跳过。</div>
+          <div>3. 红人绑定：红人Handle必须非空且匹配系统中的有效红人，否则该行将导入失败。</div>
+        </div>
+
+        <a-upload-dragger
+          name="file"
+          :multiple="false"
+          :before-upload="beforeUpload"
+          :file-list="fileList"
+          @remove="handleRemoveFile"
+          accept=".xls,.xlsx,.csv"
+          style="border-radius: 12px;"
+        >
+          <p class="ant-upload-drag-icon">
+            <InboxOutlined style="color: #10b981; font-size: 48px;" />
+          </p>
+          <p class="ant-upload-text">点击或将文件拖拽到此处上传</p>
+          <p class="ant-upload-hint">支持单个 Excel 或 CSV 文件，大小不超过 10MB</p>
+        </a-upload-dragger>
+
+        <!-- 导入结果展示 -->
+        <div v-if="importResult" style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+          <div style="font-weight: 700; color: #1e293b; margin-bottom: 12px;">导入结果统计：</div>
+          <a-row :gutter="16" style="margin-bottom: 16px;">
+            <a-col :span="6">
+              <a-statistic title="总行数" :value="importResult.totalCount" value-style="color: #1e293b" />
+            </a-col>
+            <a-col :span="6">
+              <a-statistic title="成功导入" :value="importResult.successCount" value-style="color: #10b981" />
+            </a-col>
+            <a-col :span="6">
+              <a-statistic title="跳过重复" :value="importResult.skippedCount" value-style="color: #f59e0b" />
+            </a-col>
+            <a-col :span="6">
+              <a-statistic title="失败行数" :value="importResult.failedCount" value-style="color: #ef4444" />
+            </a-col>
+          </a-row>
+
+          <div v-if="importResult.errors && importResult.errors.length > 0">
+            <div style="font-weight: 700; color: #ef4444; margin-bottom: 8px; font-size: 13px;">失败/跳过详情：</div>
+            <div style="max-height: 180px; overflow-y: auto; background: #fff5f5; border: 1px solid #fecaca; border-radius: 6px; padding: 8px;">
+              <div v-for="(err, idx) in importResult.errors" :key="idx" style="font-size: 12px; color: #b91c1c; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                <span>第 {{ err.rowNum }} 行 (订单ID: {{ err.orderId || '-' }})</span>
+                <span style="font-weight: 600;">{{ err.error }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ic-modal-footer" style="padding: 16px 24px; text-align: right; border-top: 1px solid #e2e8f0;">
+        <a-space size="middle">
+          <a-button @click="closeImportModal" class="premium-btn">关闭</a-button>
+          <a-button type="primary" :loading="importExcelLoading" :disabled="fileList.length === 0" @click="handleImportExcelSubmit" class="premium-btn primary-gradient">开始导入</a-button>
+        </a-space>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -796,7 +882,9 @@ import {
   DatabaseOutlined,
   UnorderedListOutlined,
   MailOutlined,
-  UserOutlined
+  UserOutlined,
+  UploadOutlined,
+  InboxOutlined
 } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
 import type { TableColumnsType } from 'ant-design-vue';
@@ -805,7 +893,12 @@ import OrderDetailModal from '@/components/order/OrderDetailModal.vue';
 import VirtualList from 'vue3-virtual-scroll-list';
 import VirtualConversionOrderRow from '@/components/common/VirtualConversionOrderRow.vue';
 import type { ConversionOrderRow } from '@/types/order';
-import { getConversionOrders, getConversionTabCounts, type ConversionOrderDto } from '@/services/influencerOrderService';
+import { 
+  getConversionOrders, 
+  getConversionTabCounts, 
+  type ConversionOrderDto,
+  importConversionOrdersExcel
+} from '@/services/influencerOrderService';
 import OrderSyncModal from '@/components/order/OrderSyncModal.vue';
 import { useSseStore } from '@/stores/sse';
 import { createExportTask } from '@/utils/exportTaskHelper';
@@ -1631,6 +1724,57 @@ onUnmounted(() => {
   if (sseWatchStop) sseWatchStop();
   if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
 });
+
+const importExcelModalVisible = ref(false);
+const importExcelLoading = ref(false);
+const fileList = ref<any[]>([]);
+const importResult = ref<any>(null);
+
+const openImportExcelModal = () => {
+  importExcelModalVisible.value = true;
+  fileList.value = [];
+  importResult.value = null;
+};
+
+const closeImportModal = () => {
+  importExcelModalVisible.value = false;
+  fileList.value = [];
+  importResult.value = null;
+};
+
+const beforeUpload = (file: any) => {
+  fileList.value = [file];
+  return false; // prevent auto upload
+};
+
+const handleRemoveFile = () => {
+  fileList.value = [];
+};
+
+const handleImportExcelSubmit = async () => {
+  if (fileList.value.length === 0) {
+    message.warning('请选择要导入的文件');
+    return;
+  }
+  importExcelLoading.value = true;
+  importResult.value = null;
+  try {
+    const file = fileList.value[0];
+    const opId = isNaN(Number(currentUserId.value)) ? undefined : Number(currentUserId.value);
+    const res = await importConversionOrdersExcel(file, opId);
+    importResult.value = res;
+    if (res.success) {
+      message.success(`导入完成：成功 ${res.successCount}，跳过 ${res.skippedCount}，失败 ${res.failedCount}`);
+      fetchOrders();
+    } else {
+      message.error(res.errors && res.errors.length > 0 ? '导入包含部分或全部失败，请查看详情' : '导入失败');
+    }
+  } catch (err: any) {
+    message.error(err.response?.data?.message || err.message || '导入出错');
+  } finally {
+    importExcelLoading.value = false;
+  }
+};
 </script>
 
 <style lang="scss" scoped>

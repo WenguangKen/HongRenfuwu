@@ -40,6 +40,10 @@ public class OrderCreateRequest {
     private String influencerDiscountCode;
     @Builder.Default
     private Boolean isDraft = false;
+    @Builder.Default
+    private Boolean isFbaShipment = false;
+    private String fbaWarehouseCode;
+    private String fbaShippingMethod;
 
     @Data
     @Builder

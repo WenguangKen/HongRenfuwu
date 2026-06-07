@@ -29,7 +29,7 @@
       </a-row>
 
       <!-- 趋势图 -->
-      <a-card :bordered="false" class="section-card section-row" title="业绩趋势">
+      <a-card :bordered="false" class="section-card section-row" title="红人运营趋势">
         <template #extra>
           <a-range-picker
             v-model:value="selectedDateRange"
@@ -72,91 +72,19 @@
         </a-col>
 
         <a-col :xs="24" :lg="12" class="panel-col">
-          <a-card :bordered="false" class="section-card panel-card" title="近30日带货单量榜">
+          <a-card :bordered="false" class="section-card panel-card" title="红人阶段分布">
             <div class="panel-body">
-              <div v-if="orderTop10.length === 0" class="panel-empty">
-                <a-empty :image-style="{ height: '64px' }" description="近30日暂无订单数据" />
+              <div v-if="pieChartData.length === 0" class="panel-empty">
+                <a-empty :image-style="{ height: '64px' }" description="暂无红人阶段数据" />
               </div>
-              <div v-else class="rank-list scrollable">
-                <div v-for="(item, index) in orderTop10" :key="item.id ?? index" class="rank-item">
+              <div v-else class="stage-list scrollable">
+                <div v-for="(item, index) in pieChartData" :key="item.label" class="rank-item">
                   <span class="rank-no" :class="{ top: index < 3 }">{{ index + 1 }}</span>
-                  <a-avatar class="rank-avatar" :src="item.avatar" :size="36" :style="{ backgroundColor: getAvatarColor(item.name) }">
-                    {{ item.name ? item.name.charAt(0).toUpperCase() : '?' }}
-                  </a-avatar>
-                  <div class="rank-meta">
+                  <div class="rank-meta" style="flex: 1;">
                     <div class="rank-info">
-                      <span class="rank-name" :title="item.name">{{ item.name }}</span>
-                      <span class="rank-amount">{{ item.orderCount }} 单</span>
+                      <span class="rank-name" :title="item.label">{{ item.label }}</span>
+                      <span class="rank-amount">{{ item.value }} 人 · {{ stagePercent(item.value) }}</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </a-card>
-        </a-col>
-      </a-row>
-
-      <!-- 最近订单流水 -->
-      <a-row :gutter="[16, 16]" type="flex" align="stretch" class="section-row recent-row">
-        <a-col :xs="24" :lg="12" class="panel-col">
-          <a-card :bordered="false" class="section-card panel-card" title="最近转化订单">
-            <template #extra>
-              <router-link to="/order/conversion" class="header-link">查看全部</router-link>
-            </template>
-            <div class="panel-body">
-              <div v-if="recentConversion.length === 0" class="panel-empty">
-                <a-empty :image-style="{ height: '64px' }" description="暂无转化订单" />
-              </div>
-              <div v-else class="feed-list scrollable">
-                <div v-for="item in recentConversion" :key="item.id" class="feed-item">
-                  <div class="feed-icon bg-green">
-                    <DollarOutlined />
-                  </div>
-                  <div class="feed-content">
-                    <div class="feed-title">
-                      订单 <strong>{{ item.orderName || '-' }}</strong> 由 <span>{{ item.influencerName || '未关联' }}</span> 转化
-                    </div>
-                    <div class="feed-meta">
-                      <span class="feed-time">{{ formatShortTime(item.orderCreatedAt || item.createdAt) }}</span>
-                      <span class="feed-tag" v-if="item.discountCode">{{ item.discountCode }}</span>
-                    </div>
-                  </div>
-                  <div class="feed-amount positive">
-                    +{{ formatMoney(item.totalPrice, item.currency) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </a-card>
-        </a-col>
-
-        <a-col :xs="24" :lg="12" class="panel-col">
-          <a-card :bordered="false" class="section-card panel-card" title="最近样品单">
-            <template #extra>
-              <router-link to="/order/sample" class="header-link">查看全部</router-link>
-            </template>
-            <div class="panel-body">
-              <div v-if="recentSample.length === 0" class="panel-empty">
-                <a-empty :image-style="{ height: '64px' }" description="暂无样品单" />
-              </div>
-              <div v-else class="feed-list scrollable">
-                <div v-for="item in recentSample" :key="item.id" class="feed-item">
-                  <div class="feed-icon bg-blue">
-                    <ShoppingOutlined />
-                  </div>
-                  <div class="feed-content">
-                    <div class="feed-title">
-                      红人 <span>{{ item.influencerName || '未关联' }}</span> 申请了样品单 <strong>{{ item.orderName || '-' }}</strong>
-                    </div>
-                    <div class="feed-meta">
-                      <span class="feed-time">{{ formatShortTime(item.orderCreatedAt || item.createdAt) }}</span>
-                      <span class="feed-tag blue" v-if="item.fulfillmentDisplayStatus">
-                        {{ item.fulfillmentDisplayStatus }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="feed-amount">
-                    {{ formatMoney(item.totalPrice, item.currency) }}
                   </div>
                 </div>
               </div>
@@ -172,22 +100,15 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import * as echarts from 'echarts';
 import axios from 'axios';
-import { useSseStore } from '@/stores/sse';
 import dayjs, { Dayjs } from 'dayjs';
 import {
   UserOutlined,
-  PayCircleOutlined,
-  ShoppingOutlined,
-  DollarOutlined,
+  TeamOutlined,
+  VideoCameraOutlined,
+  SkinOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
 } from '@ant-design/icons-vue';
-import {
-  getConversionOrders,
-  getSampleOrders,
-  type ConversionOrderDto,
-  type SampleOrderDto,
-} from '@/services/influencerOrderService';
 
 const avatarColors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e'];
 const getAvatarColor = (name: string) => {
@@ -281,20 +202,17 @@ const trendData = ref<DashboardTrend>({
 });
 
 const gmvTop10 = ref<TopGMVItem[]>([]);
-const orderTop10 = ref<TopOrderItem[]>([]);
-const maxGmv = computed(() => gmvTop10.value[0]?.gmv ?? 0);
-const maxOrderCount = computed(() => orderTop10.value[0]?.orderCount ?? 0);
 const stageTotal = ref(0);
 const pieChartData = ref<{label: string, value: number, color: string}[]>([]);
-const recentConversion = ref<ConversionOrderDto[]>([]);
-const recentSample = ref<SampleOrderDto[]>([]);
 
-const formatMoney = (value: number | undefined, currency?: string) => {
-  const n = Number(value);
-  const safe = Number.isFinite(n) ? n : 0;
-  const symbol = (currency || 'USD').toUpperCase() === 'USD' ? 'US$' : `${currency || ''} `;
-  return `${symbol}${safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+const cooperatingCount = computed(() =>
+  pieChartData.value.find((item) => item.label.includes('合作'))?.value ?? 0
+);
+const poolCount = computed(() =>
+  pieChartData.value
+    .filter((item) => item.label.includes('资源池'))
+    .reduce((sum, item) => sum + item.value, 0)
+);
 
 const formatShortTime = (raw?: string) => {
   if (!raw) return '-';
@@ -315,36 +233,36 @@ const chartIsEmpty = computed(() => {
 
 const kpiCards = computed(() => [
   {
-    key: 'gmv',
-    label: '订单总 GMV',
-    value: formatCurrency(stats.orderGMV),
-    trend: stats.orderGMVTrend,
-    icon: DollarOutlined,
-    iconClass: 'icon-purple',
-  },
-  {
-    key: 'commission',
-    label: '预估总分佣',
-    value: formatCurrency(stats.commissionAmount),
-    trend: stats.commissionTrend,
-    icon: PayCircleOutlined,
-    iconClass: 'icon-pink',
-  },
-  {
-    key: 'orders',
-    label: '累计转化订单',
-    value: `${stats.conversionOrders} 单`,
-    trend: stats.conversionOrdersTrend,
-    icon: ShoppingOutlined,
-    iconClass: 'icon-blue',
-  },
-  {
     key: 'influencers',
     label: '系统活跃红人',
     value: `${stats.activeInfluencers} 位`,
     trend: stats.activeInfluencersTrend,
     icon: UserOutlined,
     iconClass: 'icon-cyan',
+  },
+  {
+    key: 'total',
+    label: '红人档案总数',
+    value: `${stageTotal.value} 位`,
+    trend: 0,
+    icon: TeamOutlined,
+    iconClass: 'icon-blue',
+  },
+  {
+    key: 'cooperating',
+    label: '合作中红人',
+    value: `${cooperatingCount.value} 位`,
+    trend: 0,
+    icon: VideoCameraOutlined,
+    iconClass: 'icon-pink',
+  },
+  {
+    key: 'pool',
+    label: '资源池红人',
+    value: `${poolCount.value} 位`,
+    trend: 0,
+    icon: SkinOutlined,
+    iconClass: 'icon-purple',
   },
 ]);
 
@@ -422,37 +340,6 @@ const fetchTopGMV = async () => {
     }
   } catch (error) {
     console.error('获取GMV排行失败:', error);
-  }
-};
-
-const fetchTopOrders = async () => {
-  try {
-    const response = await axios.get<TopOrderItem[]>('/influencer-api/v1/dashboard/top-orders?limit=10');
-    if (response.data && Array.isArray(response.data)) {
-      orderTop10.value = response.data;
-    }
-  } catch (error) {
-    console.error('获取订单排行失败:', error);
-  }
-};
-
-const fetchRecentConversion = async () => {
-  try {
-    const result = await getConversionOrders(0, 10, {});
-    recentConversion.value = result?.content || [];
-  } catch (error) {
-    console.error('获取最近转化订单失败:', error);
-    recentConversion.value = [];
-  }
-};
-
-const fetchRecentSample = async () => {
-  try {
-    const result = await getSampleOrders(0, 10, {});
-    recentSample.value = result?.content || [];
-  } catch (error) {
-    console.error('获取最近样品单失败:', error);
-    recentSample.value = [];
   }
 };
 
@@ -728,10 +615,7 @@ onMounted(async () => {
     fetchDashboardStats(),
     fetchTrendData(30),
     fetchTopGMV(),
-    fetchTopOrders(),
-    fetchTopOrders(),
-    fetchRecentConversion(),
-    fetchRecentSample(),
+    fetchStageDistribution(),
   ]);
   initialLoading.value = false;
   nextTick(() => {
@@ -744,46 +628,19 @@ onMounted(async () => {
   });
 });
 
-const sseStore = useSseStore();
-let sseWatchStop: (() => void) | null = null;
-
 const refreshDashboard = async () => {
   await Promise.all([
     fetchDashboardStats(),
     fetchTrendData(30),
     fetchTopGMV(),
-    fetchTopOrders(),
-    fetchTopOrders(),
-    fetchRecentConversion(),
-    fetchRecentSample(),
+    fetchStageDistribution(),
   ]);
   updateLineChart();
 };
 
-let sseDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-const debouncedRefresh = () => {
-  if (sseDebounceTimer) clearTimeout(sseDebounceTimer);
-  sseDebounceTimer = setTimeout(() => refreshDashboard(), 2000);
-};
-
-const setupSseWatch = () => {
-  sseWatchStop = watch(() => sseStore.lastEvent, (newEvent) => {
-    if (newEvent && (
-      newEvent.category === 'orders' ||
-      newEvent.data?.topic?.startsWith('orders/') ||
-      newEvent.data?.topic === 'reconnect'
-    )) {
-      debouncedRefresh();
-    }
-  });
-};
-
-setTimeout(setupSseWatch, 100);
-
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   if (lineChartInstance) lineChartInstance.dispose();
-  if (sseWatchStop) sseWatchStop();
 });
 </script>
 

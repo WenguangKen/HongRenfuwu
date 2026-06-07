@@ -68,6 +68,13 @@ public class EccangOrderService {
     }
 
     /**
+     * 根据订单ID或编号/名称同步单个订单并分类
+     */
+    public EccangOrder syncSingleOrder(Long storeId, String orderIdentifier) {
+        return syncService.syncSingleOrder(storeId, orderIdentifier);
+    }
+
+    /**
      * 获取指定店铺的同步进度
      */
     public SyncProgressDto getSyncProgress(Long storeId) {

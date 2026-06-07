@@ -21,6 +21,7 @@ export interface User {
     name: string;
     description?: string;
   }>;
+  allocatedStores?: string[];
 }
 
 export interface UserCreateRequest {
@@ -30,6 +31,7 @@ export interface UserCreateRequest {
   phone?: string;
   roleIds: number[];
   avatarUrl?: string;
+  allocatedStores?: string[];
 }
 
 export interface UserUpdateRequest {
@@ -38,6 +40,7 @@ export interface UserUpdateRequest {
   phone?: string;
   roleIds?: number[];
   avatarUrl?: string;
+  allocatedStores?: string[];
 }
 
 export interface UserPasswordRequest {

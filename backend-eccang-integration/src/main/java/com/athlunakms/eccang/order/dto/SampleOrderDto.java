@@ -66,6 +66,12 @@ public class SampleOrderDto {
     private String ownerName;
     @Schema(description="合作价格(手动填写)")
     private BigDecimal cooperationPrice;
+    @Schema(description="是否通过FBA发货")
+    private Boolean isFbaShipment;
+    @Schema(description="FBA发货仓库代码")
+    private String fbaWarehouseCode;
+    @Schema(description="FBA发货配送方式")
+    private String fbaShippingMethod;
 
     public Long getId() {
         return this.id;
@@ -269,6 +275,18 @@ public class SampleOrderDto {
 
     public BigDecimal getCooperationPrice() {
         return this.cooperationPrice;
+    }
+
+    public Boolean getIsFbaShipment() {
+        return this.isFbaShipment;
+    }
+
+    public String getFbaWarehouseCode() {
+        return this.fbaWarehouseCode;
+    }
+
+    public String getFbaShippingMethod() {
+        return this.fbaShippingMethod;
     }
 
     public void setId(Long id) {
@@ -475,6 +493,18 @@ public class SampleOrderDto {
 
     public void setCooperationPrice(BigDecimal cooperationPrice) {
         this.cooperationPrice = cooperationPrice;
+    }
+
+    public void setIsFbaShipment(Boolean isFbaShipment) {
+        this.isFbaShipment = isFbaShipment;
+    }
+
+    public void setFbaWarehouseCode(String fbaWarehouseCode) {
+        this.fbaWarehouseCode = fbaWarehouseCode;
+    }
+
+    public void setFbaShippingMethod(String fbaShippingMethod) {
+        this.fbaShippingMethod = fbaShippingMethod;
     }
 
     public boolean equals(Object o) {

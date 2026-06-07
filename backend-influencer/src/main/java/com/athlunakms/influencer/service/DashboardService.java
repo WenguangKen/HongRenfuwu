@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class DashboardService {
     private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
+    private static final boolean ORDER_STATS_ENABLED = false;
     private final JdbcTemplate jdbcTemplate;
 
     public DashboardStatsDto getStats() {
@@ -93,6 +94,9 @@ public class DashboardService {
     }
 
     private LocalDateTime getFirstOrderDate() {
+        if (!ORDER_STATS_ENABLED) {
+            return null;
+        }
         try {
             String sql = "SELECT MIN(order_created_at) FROM influencer_conversion_order";
             Timestamp result = (Timestamp)this.jdbcTemplate.queryForObject(sql, Timestamp.class);
@@ -131,8 +135,9 @@ public class DashboardService {
         }
         LocalDateTime rangeStart = start.atStartOfDay();
         LocalDateTime rangeEnd = end.plusDays(1L).atStartOfDay();
-        String sql = "SELECT DATE(order_created_at) AS day,\n       COUNT(*) AS order_count,\n       COALESCE(SUM(total_price), 0) AS total_gmv,\n       COALESCE(SUM(commission_amount), 0) AS total_commission\nFROM influencer_conversion_order\nWHERE order_created_at >= ? AND order_created_at < ?\nGROUP BY DATE(order_created_at)\nORDER BY day\n";
         HashMap<String, Map<String, Object>> dayStatsMap = new HashMap<>();
+        if (ORDER_STATS_ENABLED) {
+        String sql = "SELECT DATE(order_created_at) AS day,\n       COUNT(*) AS order_count,\n       COALESCE(SUM(total_price), 0) AS total_gmv,\n       COALESCE(SUM(commission_amount), 0) AS total_commission\nFROM influencer_conversion_order\nWHERE order_created_at >= ? AND order_created_at < ?\nGROUP BY DATE(order_created_at)\nORDER BY day\n";
         try {
             List<Map<String, Object>> results = this.jdbcTemplate.queryForList(sql, rangeStart, rangeEnd);
             DateTimeFormatter dayKeyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -144,6 +149,7 @@ public class DashboardService {
         }
         catch (Exception e) {
             log.error("\u83b7\u53d6\u8d8b\u52bf\u805a\u5408\u6570\u636e\u5931\u8d25", (Throwable)e);
+        }
         }
         DateTimeFormatter dayKeyFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDate date = start;
@@ -170,6 +176,9 @@ public class DashboardService {
     }
 
     public List<InfluencerRankDto> getTopGMV(int days) {
+        if (!ORDER_STATS_ENABLED) {
+            return Collections.emptyList();
+        }
         LocalDateTime startDate = LocalDate.now(ZoneId.of("Asia/Shanghai")).minusDays(days).atStartOfDay();
         String sql = "SELECT ico.influencer_id, ico.influencer_name,\n       SUM(ico.total_price) as total_gmv,\n       COUNT(*) as order_count\nFROM influencer_conversion_order ico\nWHERE ico.order_created_at >= ?\nGROUP BY ico.influencer_id, ico.influencer_name\nORDER BY total_gmv DESC\nLIMIT 10\n";
         try {
@@ -189,6 +198,9 @@ public class DashboardService {
     }
 
     public List<InfluencerRankDto> getTopOrders(int days) {
+        if (!ORDER_STATS_ENABLED) {
+            return Collections.emptyList();
+        }
         LocalDateTime startDate = LocalDate.now(ZoneId.of("Asia/Shanghai")).minusDays(days).atStartOfDay();
         String sql = "SELECT ico.influencer_id, ico.influencer_name,\n       SUM(ico.total_price) as total_gmv,\n       COUNT(*) as order_count\nFROM influencer_conversion_order ico\nWHERE ico.order_created_at >= ?\nGROUP BY ico.influencer_id, ico.influencer_name\nORDER BY order_count DESC\nLIMIT 10\n";
         try {
@@ -258,6 +270,14 @@ public class DashboardService {
 
 
     private Map<String, Object> getConversionOrderStats(LocalDateTime start, LocalDateTime end) {
+        if (!ORDER_STATS_ENABLED) {
+            HashMap<String, Object> empty = new HashMap<>();
+            empty.put("order_count", 0L);
+            empty.put("total_gmv", BigDecimal.ZERO);
+            empty.put("total_commission", BigDecimal.ZERO);
+            empty.put("influencer_count", 0L);
+            return empty;
+        }
         log.debug("[DashboardService] Querying orders from {} to {}", (Object)start, (Object)end);
         String sql = "SELECT COUNT(*) as order_count,\n       COALESCE(SUM(total_price), 0) as total_gmv,\n       COALESCE(SUM(commission_amount), 0) as total_commission,\n       COUNT(DISTINCT influencer_id) as influencer_count\nFROM influencer_conversion_order\nWHERE order_created_at >= ? AND order_created_at < ?\n";
         try {

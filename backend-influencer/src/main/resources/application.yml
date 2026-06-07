@@ -112,8 +112,8 @@ app:
 
 # 服务间调用配置
 services:
-  shopify-integration:
-    url: ${SHOPIFY_INTEGRATION_URL:http://localhost:8081}
+  eccang-integration:
+    url: ${ECCANG_INTEGRATION_URL:http://localhost:8081}
   user:
     url: ${USER_SERVICE_URL:http://localhost:8080}
   ai-agent:

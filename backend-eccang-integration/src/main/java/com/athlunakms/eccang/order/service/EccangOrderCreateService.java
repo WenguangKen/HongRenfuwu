@@ -216,6 +216,15 @@ public class EccangOrderCreateService {
         if (request.getTags() != null)
             orderInput.put("tags", String.join(",", request.getTags()));
 
+        if (Boolean.TRUE.equals(request.getIsFbaShipment())) {
+            if (request.getFbaWarehouseCode() != null) {
+                orderInput.put("warehouseCode", request.getFbaWarehouseCode());
+            }
+            if (request.getFbaShippingMethod() != null) {
+                orderInput.put("shippingMethodCode", request.getFbaShippingMethod());
+            }
+        }
+
         variables.set("order", orderInput);
         root.set("variables", variables);
         return root;
@@ -281,6 +290,10 @@ public class EccangOrderCreateService {
                     .ifPresent(inf -> order.setInfluencerName(inf.getRealName()));
         }
 
+        order.setIsFbaShipment(Boolean.TRUE.equals(request.getIsFbaShipment()));
+        order.setFbaWarehouseCode(request.getFbaWarehouseCode());
+        order.setFbaShippingMethod(request.getFbaShippingMethod());
+
         EccangOrder savedOrder = orderRepository.save(order);
         List<OrderLineItem> savedItems = saveLineItemsFromCreate(savedOrder, request, lineItemsNode);
 
@@ -310,7 +323,7 @@ public class EccangOrderCreateService {
 
             if (itemReq.getVariantId() != null) {
                 variantRepository.findById(itemReq.getVariantId()).ifPresent(v -> {
-                    item.setEccangVariantId(v.getEccangVariantId());
+                    item.setEccangVariantId(v.getId());
                     item.setEccangProductId(v.getProductId());
                     if (item.getSku() == null)
                         item.setSku(v.getSku());

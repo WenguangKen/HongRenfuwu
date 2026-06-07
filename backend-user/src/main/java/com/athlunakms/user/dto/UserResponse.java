@@ -18,6 +18,15 @@ public class UserResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<RoleInfo> roles;
+    private List<String> allocatedStores;
+
+    public List<String> getAllocatedStores() {
+        return this.allocatedStores;
+    }
+
+    public void setAllocatedStores(List<String> allocatedStores) {
+        this.allocatedStores = allocatedStores;
+    }
 
     public Long getId() {
         return this.id;

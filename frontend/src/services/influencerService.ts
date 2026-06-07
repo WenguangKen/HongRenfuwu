@@ -474,6 +474,28 @@ export const influencerService = {
     getCommissionOrders(params: Record<string, any>): Promise<any> {
         return influencerHttp.get('../commission/orders', { params }) as unknown as Promise<any>;
     },
+
+    /* ---------- 红人爬取任务 ---------- */
+
+    /** 获取所有爬取任务 */
+    getCrawlTasks(): Promise<any[]> {
+        return influencerHttp.get('crawl/tasks') as unknown as Promise<any[]>;
+    },
+
+    /** 创建爬取任务 */
+    createCrawlTask(data: any): Promise<any> {
+        return influencerHttp.post('crawl/tasks', data) as unknown as Promise<any>;
+    },
+
+    /** 删除爬取任务 */
+    deleteCrawlTask(id: number): Promise<any> {
+        return influencerHttp.delete(`crawl/tasks/${id}`) as unknown as Promise<any>;
+    },
+
+    /** 触发/开始爬取任务 */
+    startCrawlTask(id: number): Promise<any> {
+        return influencerHttp.post(`crawl/tasks/${id}/start`) as unknown as Promise<any>;
+    },
 };
 
 export default influencerService;

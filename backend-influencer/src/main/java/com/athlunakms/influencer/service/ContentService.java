@@ -1417,7 +1417,7 @@ public class ContentService {
                     .replaceAll("-null", "").replaceAll("-$", "");
         }
         
-        // 2. 如果记录上没有，尝试从订单或 Shopify 库中查找
+        // 2. 如果记录上没有，尝试从订单或易仓商品库中查找
         if (specs == null || specs.isBlank()) {
             String variantTitle = this.lookupVariantTitle(sku, entity);
             if (variantTitle != null && !variantTitle.isBlank()) {
@@ -1469,7 +1469,7 @@ public class ContentService {
         try {
             List<?> variants = this.entityManager
                     .createNativeQuery(
-                            "SELECT option1, option2, option3 FROM shopify_product_variants WHERE sku = :sku LIMIT 1")
+                            "SELECT option1, option2, option3 FROM eccang_product_variants WHERE sku = :sku LIMIT 1")
                     .setParameter("sku", sku).getResultList();
             if (!variants.isEmpty()) {
                 Object[] row = (Object[]) variants.get(0);

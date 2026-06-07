@@ -363,6 +363,10 @@ public class OrderClassificationService {
         sample.setFinancialStatus(order.getFinancialStatus());
         sample.setCancelledAt(order.getCancelledAtEccang());
 
+        sample.setIsFbaShipment(Boolean.TRUE.equals(order.getIsFbaShipment()));
+        sample.setFbaWarehouseCode(order.getFbaWarehouseCode());
+        sample.setFbaShippingMethod(order.getFbaShippingMethod());
+
         // 地址信息
         sample.setRecipientName(order.getShippingName());
         sample.setRecipientPhone(order.getShippingPhone());

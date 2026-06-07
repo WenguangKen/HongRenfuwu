@@ -20,8 +20,15 @@ public class RestTemplateConfig {
         PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
         connectionManager.setMaxTotal(200);
         connectionManager.setDefaultMaxPerRoute(20);
-        RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(Timeout.ofMilliseconds((long)10000L)).setResponseTimeout(Timeout.ofMilliseconds((long)30000L)).setConnectionRequestTimeout(Timeout.ofMilliseconds((long)10000L)).build();
-        CloseableHttpClient httpClient = HttpClientBuilder.create().setConnectionManager((HttpClientConnectionManager)connectionManager).setDefaultRequestConfig(requestConfig).build();
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setConnectTimeout(Timeout.ofMilliseconds(30000L))
+            .setResponseTimeout(Timeout.ofMilliseconds(180000L))
+            .setConnectionRequestTimeout(Timeout.ofMilliseconds(30000L))
+            .build();
+        CloseableHttpClient httpClient = HttpClientBuilder.create()
+            .setConnectionManager((HttpClientConnectionManager)connectionManager)
+            .setDefaultRequestConfig(requestConfig)
+            .build();
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory((HttpClient)httpClient);
         return new RestTemplate((ClientHttpRequestFactory)factory);
     }

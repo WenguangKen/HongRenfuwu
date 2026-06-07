@@ -13,25 +13,34 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface EccangProductVariantRepository
-extends JpaRepository<EccangProductVariant, Long> {
-    public List<EccangProductVariant> findByProductId(Long var1);
+public interface EccangProductVariantRepository extends JpaRepository<EccangProductVariant, Long> {
 
-    public List<EccangProductVariant> findByProductIdIn(Collection<Long> var1);
+    List<EccangProductVariant> findByProductId(Long productId);
 
-    public Optional<EccangProductVariant> findByEccangVariantId(Long var1);
+    List<EccangProductVariant> findByProductIdIn(Collection<Long> productIds);
 
-    public Optional<EccangProductVariant> findFirstBySkuIgnoreCase(String var1);
+    Optional<EccangProductVariant> findByUserAccountAndSku(String userAccount, String sku);
+
+    List<EccangProductVariant> findBySkuIn(Collection<String> skus);
+
+    @Query("SELECT v FROM EccangProductVariant v WHERE v.sku = :sku "
+        + "AND UPPER(REPLACE(v.userAccount, '-', '_')) = :normalizedAccount")
+    Optional<EccangProductVariant> findByNormalizedAccountAndSku(
+        @Param("normalizedAccount") String normalizedAccount, @Param("sku") String sku);
+
+    Optional<EccangProductVariant> findFirstBySkuIgnoreCase(String sku);
 
     @Modifying
-    @Query(value="DELETE FROM EccangProductVariant v WHERE v.productId = :productId")
-    public void deleteByProductId(@Param(value="productId") Long var1);
+    @Query("DELETE FROM EccangProductVariant v WHERE v.productId = :productId")
+    void deleteByProductId(@Param("productId") Long productId);
 
-    @Lock(value=LockModeType.PESSIMISTIC_WRITE)
-    @Query(value="SELECT v FROM EccangProductVariant v WHERE v.id = :id")
-    public Optional<EccangProductVariant> findByIdWithLock(@Param(value="id") Long var1);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM EccangProductVariant v WHERE v.id = :id")
+    Optional<EccangProductVariant> findByIdWithLock(@Param("id") Long id);
 
-    @Query(value="SELECT DISTINCT v.sku FROM EccangProductVariant v WHERE v.sku IS NOT NULL AND v.sku != '' AND v.sku != 'null' ORDER BY v.sku")
-    public List<String> findDistinctSkus();
+    @Query("SELECT DISTINCT v.sku FROM EccangProductVariant v WHERE v.sku IS NOT NULL AND v.sku != '' ORDER BY v.sku")
+    List<String> findDistinctSkus();
+
+    @Query("SELECT v FROM EccangProductVariant v WHERE v.sku IN :skus")
+    List<EccangProductVariant> findAllBySkuIn(@Param("skus") Collection<String> skus);
 }
-

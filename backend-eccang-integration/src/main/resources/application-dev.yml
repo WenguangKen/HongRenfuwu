@@ -2,8 +2,7 @@ spring:
   config:
     activate:
       on-profile: dev
-  
-  datasource:
+
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
@@ -21,6 +20,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+
+# 易仓「wms应用」凭证（已审核通过，开发环境）
+eccang:
+  api:
+    app-key: 28cf5e2b52054b72
+    app-secret: ac26676dc9fe2907
+    # 请在易仓后台点击「授权状态→查看」后填入 service-id
+    service-id: ET1YYF
 
 logging:
   level:

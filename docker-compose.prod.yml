@@ -1,5 +1,5 @@
 services:
-  # 注意：MySQL 不在 Docker 中，使用外部数据�?192.168.5.135
+  # 注�?��?MySQL 不�?� Docker 中�?使�?��?�?��?�据�?192.168.5.135
   
   redis:
     image: redis:7-alpine
@@ -125,6 +125,9 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=hongrenfuwu2025
+      - ECCANG_APP_KEY=${ECCANG_APP_KEY:-28cf5e2b52054b72}
+      - ECCANG_APP_SECRET=${ECCANG_APP_SECRET:-ac26676dc9fe2907}
+      - ECCANG_SERVICE_ID=ET1YYF
     depends_on:
       - redis
     networks:
@@ -135,36 +138,6 @@ services:
           memory: 1536M
         reservations:
           memory: 512M
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
-
-  backend-webhook:
-    container_name: influencer-backend-webhook-prod
-    image: influencer-webhook:1.0.0
-    build:
-      context: ./backend-webhook
-      dockerfile: ../deploy/Dockerfile.deploy
-    restart: always
-    ports:
-      - "8083:8083"
-    environment:
-      - DB_HOST=192.168.5.135
-      - DB_PORT=3306
-      - DB_NAME=hongrenfuwu
-      - DB_USER=root
-      - DB_PASSWORD=Yaoxingxuanlv-39
-      - SPRING_PROFILES_ACTIVE=prod
-    networks:
-      - influencer-net
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
-        reservations:
-          memory: 256M
     logging:
       driver: json-file
       options:

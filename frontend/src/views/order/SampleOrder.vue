@@ -272,6 +272,9 @@
             <a-button class="premium-btn-small" v-permission="'order.sample.export'" @click="openExportModal">
               <template #icon><export-outlined /></template>导出
             </a-button>
+            <a-button type="primary" ghost class="premium-btn-small" @click="openImportByIdModal" v-permission="'order.sample.create'">
+              <template #icon><download-outlined /></template>单号导入
+            </a-button>
             <a-button type="primary" @click="showCreateModal" class="premium-btn-small primary-gradient" v-permission="'order.sample.create'">
               <template #icon><plus-outlined /></template>创建订单
             </a-button>
@@ -783,6 +786,50 @@
         </a-space>
       </div>
     </a-modal>
+
+    <!-- 单号抓取导入弹窗 -->
+    <a-modal
+      v-model:open="importByIdModalVisible"
+      title="单号抓取导入样品单"
+      :footer="null"
+      class="premium-modal influencer-create-modal"
+      width="500px"
+      centered
+    >
+      <div class="ic-modal-header glass-header" style="border-radius: 12px 12px 0 0;">
+        <div class="ic-header-left">
+          <div class="ic-header-icon-wrapper" style="background: linear-gradient(135deg, #1890ff 0%, #3b82f6 100%);">
+            <DownloadOutlined />
+          </div>
+          <div class="ic-header-text">
+            <div class="ic-header-title">单号抓取导入</div>
+            <div class="ic-header-subtitle">通过易仓接口自动抓取并生成对应的样品单</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="ic-modal-body" style="background: #fff; padding: 24px;">
+        <a-form :model="importByIdForm" layout="vertical">
+          <a-form-item label="选择店铺" required>
+            <a-select v-model:value="importByIdForm.storeId" placeholder="请选择易仓店铺" class="premium-select">
+              <a-select-option v-for="store in storeOptions" :key="store.id" :value="store.id">
+                {{ store.storeName }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="订单ID / 交易号" required>
+            <a-input v-model:value="importByIdForm.orderId" placeholder="请输入易仓中的订单 ID 或交易号(如 123-4567-890)" class="premium-input" />
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <div class="ic-modal-footer" style="padding: 16px 24px; text-align: right; border-top: 1px solid #e2e8f0;">
+        <a-space size="middle">
+          <a-button @click="importByIdModalVisible = false" class="premium-btn">取消</a-button>
+          <a-button type="primary" :loading="importByIdLoading" @click="handleImportByIdSubmit" class="premium-btn primary-gradient">开始抓取导入</a-button>
+        </a-space>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -804,7 +851,8 @@ import {
   UnorderedListOutlined,
   MailOutlined,
   ExclamationCircleFilled,
-  UserOutlined
+  UserOutlined,
+  DownloadOutlined
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import dayjs, { Dayjs } from 'dayjs';
@@ -817,8 +865,10 @@ import type { SampleOrderRow } from '@/types/order';
 import { 
   getSampleOrders, 
   getSampleTabCounts, 
-  exportSampleOrders
+  exportSampleOrders,
+  importSampleOrderById
 } from '@/services/influencerOrderService';
+import { getEccangStores } from '@/services/eccangService';
 import type { SampleOrderDto } from '@/services/influencerOrderService';
 const confirmDraftOrder = async (id: number): Promise<any> => {};
 const deleteShopifyOrder = async (id: number): Promise<any> => {};
@@ -1797,6 +1847,53 @@ const handleDeleteDraft = (record: any) => {
       }
     });
   });
+};
+const importByIdModalVisible = ref(false);
+const importByIdLoading = ref(false);
+const importByIdForm = reactive({
+  storeId: undefined as number | undefined,
+  orderId: ''
+});
+const storeOptions = ref<any[]>([]);
+
+const openImportByIdModal = async () => {
+  importByIdForm.orderId = '';
+  importByIdModalVisible.value = true;
+  try {
+    const stores = await getEccangStores();
+    storeOptions.value = stores || [];
+    if (stores && stores.length > 0 && !importByIdForm.storeId && stores[0]) {
+      importByIdForm.storeId = stores[0].id;
+    }
+  } catch (err) {
+    message.error('获取店铺列表失败');
+  }
+};
+
+const handleImportByIdSubmit = async () => {
+  if (!importByIdForm.storeId) {
+    message.warning('请选择店铺');
+    return;
+  }
+  if (!importByIdForm.orderId.trim()) {
+    message.warning('请输入订单ID/交易号');
+    return;
+  }
+  importByIdLoading.value = true;
+  try {
+    const res = await importSampleOrderById(importByIdForm.storeId, importByIdForm.orderId.trim());
+    if (res.success) {
+      message.success(res.message || '导入成功');
+      importByIdModalVisible.value = false;
+      fetchSampleOrders();
+    } else {
+      message.error(res.message || '导入失败');
+    }
+  } catch (err: any) {
+    message.error(err.response?.data?.message || err.message || '系统错误');
+  } finally {
+    importByIdLoading.value = false;
+  }
 };
 </script>
 

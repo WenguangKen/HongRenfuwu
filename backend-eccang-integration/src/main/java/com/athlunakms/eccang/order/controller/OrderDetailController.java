@@ -305,7 +305,7 @@ public class OrderDetailController {
             String image = item.getImageUrl();
             if (image == null || image.isEmpty()) {
                 if (item.getEccangVariantId() != null) {
-                    image = this.variantRepository.findByEccangVariantId(item.getEccangVariantId()).map(EccangProductVariant::getImageUrl).orElse(null);
+                    image = this.variantRepository.findById(item.getEccangVariantId()).map(EccangProductVariant::getImageUrl).orElse(null);
                 }
                 if ((image == null || image.isEmpty()) && item.getSku() != null && !item.getSku().isEmpty()) {
                     image = this.variantRepository.findFirstBySkuIgnoreCase(item.getSku()).map(EccangProductVariant::getImageUrl).orElse(null);

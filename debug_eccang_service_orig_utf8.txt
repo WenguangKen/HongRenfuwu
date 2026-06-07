@@ -1,0 +1,395 @@
+﻿package com.athlunakms.eccang.product.service;
+
+import com.athlunakms.eccang.common.client.EccangApiClient;
+import com.athlunakms.eccang.config.entity.EccangConfig;
+import com.athlunakms.eccang.config.repository.EccangConfigRepository;
+import com.athlunakms.eccang.order.dto.SyncProgressDto;
+import com.athlunakms.eccang.product.dto.EccangProductDto;
+import com.athlunakms.eccang.product.dto.EccangVariantDto;
+import com.athlunakms.eccang.product.entity.EccangProduct;
+import com.athlunakms.eccang.product.entity.EccangProductVariant;
+import com.athlunakms.eccang.product.repository.EccangProductRepository;
+import com.athlunakms.eccang.product.repository.EccangProductVariantRepository;
+import com.athlunakms.eccang.store.entity.EccangStore;
+import com.athlunakms.eccang.store.repository.EccangStoreRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class EccangProductService {
+    private static final Logger log = LoggerFactory.getLogger(EccangProductService.class);
+    private final EccangProductRepository productRepository;
+    private final EccangProductVariantRepository variantRepository;
+    private final EccangStoreRepository storeRepository;
+    private final EccangApiClient eccangApiClient;
+    private final EccangConfigRepository configRepository;
+    private final Map<Long, SyncProgressDto> syncProgressMap = new ConcurrentHashMap<>();
+    private final Object syncLock = new Object();
+
+    public EccangProductService(EccangProductRepository productRepository, 
+                                EccangProductVariantRepository variantRepository, 
+                                EccangStoreRepository storeRepository, 
+                                EccangApiClient eccangApiClient, 
+                                EccangConfigRepository configRepository) {
+        this.productRepository = productRepository;
+        this.variantRepository = variantRepository;
+        this.storeRepository = storeRepository;
+        this.eccangApiClient = eccangApiClient;
+        this.configRepository = configRepository;
+    }
+
+    @Async
+    @Transactional
+    public void syncProducts(Long storeId) {
+        synchronized (this.syncLock) {
+            SyncProgressDto existingProgress = this.syncProgressMap.get(storeId);
+            if (existingProgress != null && "RUNNING".equals(existingProgress.getStatus())) {
+                log.warn("Product sync already running for storeId: {}, skipping", storeId);
+                return;
+            }
+            SyncProgressDto progress = SyncProgressDto.builder()
+                .status("RUNNING")
+                .startTime(System.currentTimeMillis())
+                .processed(0)
+                .total(0)
+                .message("姝ｅ湪浠庢槗浠撹幏鍙栧晢鍝佹暟鎹?..")
+                .build();
+            this.syncProgressMap.put(storeId, progress);
+        }
+        
+        SyncProgressDto progress = this.syncProgressMap.get(storeId);
+        log.info("Starting optimized product sync for storeId: {}", storeId);
+        
+        try {
+            EccangStore store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("Store not found"));
+                
+            List<EccangConfig> configs = configRepository.findAll();
+            if (configs.isEmpty()) {
+                throw new RuntimeException("鏈厤缃叏灞€鏄撲粨 API 瀵嗛挜锛岃鍏堝湪璁剧疆涓厤缃?);
+            }
+            EccangConfig config = configs.get(0);
+
+            // Fetch page 1, size 50 as example
+            List<JsonNode> productsData = eccangApiClient.getWmsProductList(config.getAppKey(), config.getAppSecretEncrypted(), 1, 50);
+            
+            if (productsData == null || productsData.isEmpty()) {
+                progress.setStatus("COMPLETED");
+                progress.setMessage("鏈彂鐜板晢鍝佹垨鍚屾瀹屾垚 (鏁版嵁涓虹┖)");
+                progress.setEndTime(System.currentTimeMillis());
+                return;
+            }
+            
+            int totalCount = productsData.size();
+            progress.setTotal(totalCount);
+            progress.setMessage(String.format("寮€濮嬪悓姝?%d 涓晢鍝?..", totalCount));
+            
+            // Map the json objects to local entities
+            List<EccangProduct> existingProducts = productRepository.findByStoreId(storeId);
+            Map<String, EccangProduct> existingProductsMap = existingProducts.stream()
+                .collect(Collectors.toMap(EccangProduct::getSpu, p -> p, (a, b) -> a)); // Using SKU or SPU as key
+            
+            List<EccangProduct> productsToSave = new ArrayList<>();
+            Set<String> syncedSpus = new HashSet<>();
+            
+            for (JsonNode productNode : productsData) {
+                String spu = productNode.path("product_spu").asText();
+                String sku = productNode.path("product_sku").asText();
+                String key = (spu == null || spu.isEmpty()) ? sku : spu; // fallback to sku if no spu
+                
+                syncedSpus.add(key);
+                EccangProduct product = existingProductsMap.getOrDefault(key, new EccangProduct());
+                
+                mapJsonToEntity(productNode, product, storeId, store.getStoreName(), key);
+                productsToSave.add(product);
+            }
+            
+            // Save main products
+            List<EccangProduct> savedProductsList = productRepository.saveAll(productsToSave);
+            Map<String, EccangProduct> savedProductsMap = savedProductsList.stream()
+                .collect(Collectors.toMap(EccangProduct::getSpu, p -> p));
+                
+            // Now map variants
+            List<Long> productIds = savedProductsList.stream().map(EccangProduct::getId).collect(Collectors.toList());
+            List<EccangProductVariant> existingVariants = variantRepository.findByProductIdIn(productIds);
+            Map<String, EccangProductVariant> existingVariantsMap = existingVariants.stream()
+                .collect(Collectors.toMap(EccangProductVariant::getSku, v -> v, (a, b) -> a));
+                
+            List<EccangProductVariant> allVariantsToSave = new ArrayList<>();
+            
+            int processedCount = 0;
+            for (JsonNode productNode : productsData) {
+                String spu = productNode.path("product_spu").asText();
+                String sku = productNode.path("product_sku").asText();
+                String key = (spu == null || spu.isEmpty()) ? sku : spu;
+                
+                EccangProduct product = savedProductsMap.get(key);
+                if (product == null) continue;
+                
+                EccangProductVariant variant = existingVariantsMap.getOrDefault(sku, new EccangProductVariant());
+                mapJsonToVariantEntity(productNode, variant, product);
+                allVariantsToSave.add(variant);
+                
+                processedCount++;
+                progress.setProcessed(processedCount);
+                progress.setSuccess(processedCount);
+                if (processedCount % 10 == 0 || processedCount == totalCount) {
+                    progress.setMessage(String.format("姝ｅ湪澶勭悊鍙樹綋鏁版嵁: %d / %d", processedCount, totalCount));
+                }
+            }
+            
+            if (!allVariantsToSave.isEmpty()) {
+                variantRepository.saveAll(allVariantsToSave);
+            }
+            
+            // 鏍囪鏈嚭鐜扮殑涓?suspected_deleted
+            int markedCount = 0;
+            for (EccangProduct lp : existingProducts) {
+                if (!syncedSpus.contains(lp.getSpu()) && 
+                    !"suspected_deleted".equals(lp.getStatus()) && !"deleted".equals(lp.getStatus())) {
+                    lp.setStatus("suspected_deleted");
+                    productRepository.save(lp);
+                    markedCount++;
+                }
+            }
+            
+            log.info("Synced products for storeId: {}. Processed {}, Marked {} as suspected_deleted.", storeId, totalCount, markedCount);
+            progress.setStatus("COMPLETED");
+            progress.setMessage(String.format("鍚屾瀹屾垚: 宸叉洿鏂?%d 涓晢鍝佺殑璇︽儏涓庡彉浣?, totalCount));
+            progress.setEndTime(System.currentTimeMillis());
+
+        } catch (Exception e) {
+            log.error("Aborting product sync due to API error: {}", e.getMessage(), e);
+            progress.setStatus("FAILED");
+            progress.setMessage("鑾峰彇 Eccang 鍟嗗搧鏃跺彂鐢熼敊璇? " + e.getMessage());
+            progress.setEndTime(System.currentTimeMillis());
+        }
+    }
+
+    private void mapJsonToEntity(JsonNode node, EccangProduct product, Long storeId, String storeDomain, String spu) {
+        product.setStoreId(storeId);
+        product.setSpu(spu);
+        product.setEccangProductId(0L); // Or hash the SPU?
+        product.setTitle(node.path("product_title").asText());
+        product.setVendor(node.path("default_supplier_code").asText(""));
+        
+        String eccangStatus = node.path("product_status").asText("1");
+        if ("0".equals(eccangStatus)) {
+            product.setStatus("inactive");
+        } else if ("1".equals(eccangStatus)) {
+            product.setStatus("active");
+        } else if ("2".equals(eccangStatus)) {
+            product.setStatus("draft");
+        } else {
+            product.setStatus("unknown");
+        }
+        
+        String images = node.path("product_images").asText("");
+        if (!images.isEmpty()) {
+            product.setSpuImages(images);
+            product.setMainImage(images.split(",")[0]);
+        }
+        
+        // Date parsing is usually yyyy-MM-dd HH:mm:ss in Eccang API
+        String addTime = node.path("product_add_time").asText(null);
+        if (addTime != null && !addTime.isEmpty()) {
+            try {
+                product.setCreatedAt(LocalDateTime.parse(addTime.replace(" ", "T")));
+            } catch (Exception e) {}
+        }
+    }
+    
+    private void mapJsonToVariantEntity(JsonNode node, EccangProductVariant variant, EccangProduct product) {
+        variant.setProductId(product.getId());
+        variant.setEccangProductId(product.getEccangProductId());
+        variant.setEccangVariantId(0L);
+        variant.setSku(node.path("product_sku").asText());
+        variant.setTitle(node.path("product_title").asText());
+        
+        variant.setPrice(parseDecimal(node.path("sp_unit_price").asText("0")));
+        
+        // Eccang FBA ASIN often nested in product_combination -> sub_products or pcr_fba_asin
+        // FBA Inventory is missing from this API, setting to 0 by default.
+        variant.setInventoryQuantity(0);
+        
+        // Use single image for variant if possible
+        String images = node.path("product_images").asText("");
+        if (!images.isEmpty()) {
+            variant.setImageUrl(images.split(",")[0]);
+        }
+        
+        variant.setWeight(parseDecimal(node.path("product_weight").asText("0")));
+        variant.setWeightUnit("kg");
+    }
+
+    private BigDecimal parseDecimal(String value) {
+        try {
+            if (value == null || value.isEmpty()) return BigDecimal.ZERO;
+            return new BigDecimal(value);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    public SyncProgressDto getSyncProgress(Long storeId) {
+        return syncProgressMap.get(storeId);
+    }
+
+    public void clearSyncProgress(Long storeId) {
+        syncProgressMap.remove(storeId);
+    }
+
+    public List<String> getAllDistinctSkus() {
+        return variantRepository.findDistinctSkus();
+    }
+
+    public List<EccangProductDto> searchProducts(Long storeId, String keyword, String status) {
+        Specification<EccangProduct> spec = (root, query, cb) -> {
+            ArrayList<Predicate> predicates = new ArrayList<>();
+            if (storeId != null) predicates.add(cb.equal(root.get("storeId"), storeId));
+            if (status != null && !"all".equalsIgnoreCase(status)) predicates.add(cb.equal(root.get("status"), status));
+            
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                Predicate titlePredicate = cb.like(cb.lower(root.get("title")), pattern);
+                Predicate spuPredicate = cb.like(cb.lower(root.get("spu")), pattern);
+                
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<EccangProductVariant> variantRoot = subquery.from(EccangProductVariant.class);
+                subquery.select(variantRoot.get("productId"));
+                Predicate skuMatch = cb.like(cb.lower(variantRoot.get("sku")), pattern);
+                subquery.where(skuMatch);
+                
+                predicates.add(cb.or(titlePredicate, spuPredicate, root.get("id").in(subquery)));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        List<EccangProduct> entities = productRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return convertToDtoList(entities);
+    }
+
+    public void syncProductsIncremental(Long storeId, LocalDateTime startTime, LocalDateTime endTime) {
+        // TODO: Implement incremental sync
+        log.info("Incremental sync requested, currently fallback to full sync");
+        syncProducts(storeId);
+    }
+
+    public Page<EccangProductDto> searchProductsPaged(Long storeId, String keyword, String status, int page, int size) {
+        Specification<EccangProduct> spec = (root, query, cb) -> {
+            ArrayList<Predicate> predicates = new ArrayList<>();
+            if (storeId != null) predicates.add(cb.equal(root.get("storeId"), storeId));
+            if (status != null && !"all".equalsIgnoreCase(status)) predicates.add(cb.equal(root.get("status"), status));
+            
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                Predicate titlePredicate = cb.like(cb.lower(root.get("title")), pattern);
+                Predicate spuPredicate = cb.like(cb.lower(root.get("spu")), pattern);
+                
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<EccangProductVariant> variantRoot = subquery.from(EccangProductVariant.class);
+                subquery.select(variantRoot.get("productId"));
+                Predicate skuMatch = cb.like(cb.lower(variantRoot.get("sku")), pattern);
+                subquery.where(skuMatch);
+                
+                predicates.add(cb.or(titlePredicate, spuPredicate, root.get("id").in(subquery)));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<EccangProduct> entityPage = productRepository.findAll(spec, pageable);
+        List<EccangProductDto> dtos = convertToDtoList(entityPage.getContent());
+        return new PageImpl<>(dtos, pageable, entityPage.getTotalElements());
+    }
+
+    public List<EccangProductDto> getAllProducts() {
+        List<EccangProduct> entities = productRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        return convertToDtoList(entities);
+    }
+
+    public List<EccangProductDto> getProductsByStoreId(Long storeId) {
+        List<EccangProduct> entities = productRepository.findByStoreId(storeId);
+        return convertToDtoList(entities);
+    }
+
+    private List<EccangProductDto> convertToDtoList(List<EccangProduct> entities) {
+        if (entities == null || entities.isEmpty()) return new ArrayList<>();
+        
+        List<Long> productIds = entities.stream().map(EccangProduct::getId).collect(Collectors.toList());
+        Set<Long> storeIds = entities.stream().map(EccangProduct::getStoreId).collect(Collectors.toSet());
+        
+        List<EccangProductVariant> allVariants = variantRepository.findByProductIdIn(productIds);
+        Map<Long, List<EccangProductVariant>> variantsMap = allVariants.stream().collect(Collectors.groupingBy(EccangProductVariant::getProductId));
+        
+        List<EccangStore> allStores = storeRepository.findAllById(storeIds);
+        Map<Long, String> storeNamesMap = allStores.stream().collect(Collectors.toMap(EccangStore::getId, EccangStore::getStoreName, (a, b) -> a));
+        Map<Long, String> amazonShopNamesMap = allStores.stream().collect(Collectors.toMap(EccangStore::getId, EccangStore::getNotes, (a, b) -> a)); // Temporary fallback
+        
+        return entities.stream().map(entity -> {
+            EccangProductDto dto = new EccangProductDto();
+            BeanUtils.copyProperties(entity, dto);
+            dto.setStoreName(storeNamesMap.get(entity.getStoreId()));
+            dto.setAmazonShopName(amazonShopNamesMap.get(entity.getStoreId()));
+            
+            List<EccangProductVariant> variants = variantsMap.getOrDefault(entity.getId(), new ArrayList<>());
+            List<EccangVariantDto> variantDtos = variants.stream().map(v -> convertVariantToDto(v, entity)).collect(Collectors.toList());
+            dto.setVariants(variantDtos);
+            
+            if (!variants.isEmpty()) {
+                BigDecimal minPrice = variants.stream().map(EccangProductVariant::getPrice).filter(Objects::nonNull).min(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+                BigDecimal maxPrice = variants.stream().map(EccangProductVariant::getPrice).filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+                dto.setMinPrice(minPrice);
+                dto.setMaxPrice(maxPrice);
+                
+                // Assuming FBA inventory logic relies on variants
+                int fbaInventory = variants.stream().mapToInt(EccangProductVariant::getInventoryQuantity).sum();
+                dto.setFbaInventory(fbaInventory);
+                
+                if (variantDtos.size() > 0 && variantDtos.get(0).getAsin() != null) {
+                    dto.setAsin(variantDtos.get(0).getAsin());
+                }
+                dto.setSku(variantDtos.get(0).getSku());
+            }
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    public List<EccangProductDto> getProductsByGids(List<String> gids) {
+        // Not perfectly mapped yet since we don't use gids anymore
+        return new ArrayList<>();
+    }
+
+    private EccangVariantDto convertVariantToDto(EccangProductVariant entity, EccangProduct product) {
+        EccangVariantDto dto = new EccangVariantDto();
+        BeanUtils.copyProperties(entity, dto);
+        dto.setSpu(product.getSpu());
+        dto.setProductTitle(product.getTitle());
+        return dto;
+    }
+}

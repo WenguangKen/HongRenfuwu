@@ -5,7 +5,7 @@ spring:
   # 数据源配置 (主从分离)
   datasource:
     master:
-      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
       username: ${DB_USER:root}
       password: ${DB_PASSWORD:Yaoxingxuanlv-39}
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -18,7 +18,7 @@ spring:
         pool-name: HikariPool-Eccang-Master
     
     slave:
-      url: jdbc:mysql://${DB_SLAVE_HOST:localhost}:${DB_SLAVE_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://${DB_SLAVE_HOST:localhost}:${DB_SLAVE_PORT:3306}/${DB_NAME:hongrenfuwu}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
       username: ${DB_SLAVE_USER:root}
       password: ${DB_SLAVE_PASSWORD:Yaoxingxuanlv-39}
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -42,6 +42,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
 
 # 服务器配置
 server:
@@ -74,6 +78,32 @@ logging:
     name: logs/eccang-service.log
     max-size: 10MB
     max-history: 30
+
+# 易仓 OpenAPI（红人系统应用）
+eccang:
+  api:
+    url: ${ECCANG_API_URL:http://openapi-web.eccang.com/openApi/api/unity}
+    app-key: ${ECCANG_APP_KEY:28cf5e2b52054b72}
+    app-secret: ${ECCANG_APP_SECRET:ac26676dc9fe2907}
+    # 在易仓后台「应用管理 → 授权状态 → 查看」获取
+    service-id: ${ECCANG_SERVICE_ID:ET1YYF}
+  sync:
+    # 每页拉取条数（越小对易仓压力越低）
+    # 主数据源：amazon-listing（推荐）| wms | both
+    primary-source: ${ECCANG_SYNC_PRIMARY_SOURCE:amazon-listing}
+    page-size: ${ECCANG_SYNC_PAGE_SIZE:1000}
+    # 分页请求间隔（毫秒），避免连续打满 API
+    page-delay-ms: ${ECCANG_SYNC_PAGE_DELAY_MS:400}
+    # 同一店铺两次全量同步最短间隔（分钟）
+    cooldown-minutes: ${ECCANG_SYNC_COOLDOWN_MINUTES:30}
+    # 定时任务店铺间隔（毫秒）
+    store-delay-ms: ${ECCANG_SYNC_STORE_DELAY_MS:3000}
+    # 429 限流时自动重试次数与初始退避（毫秒，指数翻倍）
+    rate-limit-retries: ${ECCANG_SYNC_RATE_LIMIT_RETRIES:5}
+    rate-limit-backoff-ms: ${ECCANG_SYNC_RATE_LIMIT_BACKOFF_MS:10000}
+    # 定时全量同步开关（默认关闭，避免与手动同步争抢 API 配额）
+    scheduler:
+      enabled: ${ECCANG_SYNC_SCHEDULER_ENABLED:false}
 
 # 服务集成配置
 influencer:

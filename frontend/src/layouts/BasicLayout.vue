@@ -149,7 +149,6 @@ import ExportTaskList from '@/components/layout/ExportTaskList.vue';
 import { useTabsStore } from '@/stores/tabs';
 import { useUserStore } from '@/stores/user';
 import { usePermissionStore } from '@/stores/permission';
-import { useSseStore } from '@/stores/sse';
 import menuConfig from '@/config/menu';
 import { onAiUiAction } from '@/utils/aiActionBus';
 
@@ -161,7 +160,6 @@ const route = useRoute();
 const tabsStore = useTabsStore();
 const userStore = useUserStore();
 const permStore = usePermissionStore();
-const sseStore = useSseStore();
 
 const icons: any = {
   DashboardOutlined,
@@ -313,12 +311,8 @@ onMounted(async () => {
   if (!userStore.userInfo) {
     await userStore.loadUserInfo();
   }
-  if (!permStore.syncedFromServer) {
-    await permStore.refreshPermissions();
-  }
-
-  // 启动 SSE 连接
-  sseStore.connect();
+  // 刷新最新权限，保证后台新权限配置即时生效
+  await permStore.refreshPermissions();
 
   // 监听 AI 导航时的 CloseAllModals 事件
   unsubscribeCloseAllModals = onAiUiAction((action) => {
@@ -342,8 +336,6 @@ onUnmounted(() => {
   if (permissionRefreshTimer) {
     clearInterval(permissionRefreshTimer);
   }
-  // 断开 SSE 连接
-  sseStore.disconnect();
   // 取消 CloseAllModals 监听
   unsubscribeCloseAllModals?.();
 });

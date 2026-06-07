@@ -13,6 +13,15 @@ public class UserUpdateRequest {
     private @Size(max=20, message="\u7535\u8bdd\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc720\u4e2a\u5b57\u7b26") String phone;
     private List<Long> roleIds;
     private String avatarUrl;
+    private List<String> allocatedStores;
+
+    public List<String> getAllocatedStores() {
+        return this.allocatedStores;
+    }
+
+    public void setAllocatedStores(List<String> allocatedStores) {
+        this.allocatedStores = allocatedStores;
+    }
 
     public String getUsername() {
         return this.username;

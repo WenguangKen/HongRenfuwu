@@ -2,7 +2,7 @@
   <a-modal
     v-model:open="visible"
     :title="null"
-    width="720px"
+    width="800px"
     :footer="null"
     centered
     class="user-modal"
@@ -87,6 +87,66 @@
           </a-form>
         </div>
       </div>
+
+      <!-- 店铺分配板块 -->
+      <div class="um-section" style="margin-top: 20px;">
+        <div class="um-section-header">
+          <span class="um-section-title">店铺权限分配</span>
+        </div>
+        <div class="um-section-body">
+          <div v-if="loadingStores" style="padding: 20px 0; text-align: center;">
+            <a-spin />
+          </div>
+          <div v-else-if="allStoresList.length === 0" style="color: #94a3b8; padding: 10px 0; text-align: center; font-size: 13px;">
+            暂无已同步的店铺账号，请先在易仓集成中同步店铺。
+          </div>
+          <div v-else>
+            <!-- 头部筛选和全选控制 -->
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+              <span style="color: #64748b; font-size: 13px; font-weight: 500;">选择可查看的店铺账号（支持筛选）：</span>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a-input 
+                  v-model:value="searchFilters.account" 
+                  placeholder="搜索店铺账号" 
+                  allow-clear
+                  style="width: 170px;"
+                />
+                <a-select
+                  v-model:value="searchFilters.site"
+                  placeholder="筛选国家/站点"
+                  allow-clear
+                  style="width: 140px;"
+                >
+                  <a-select-option v-for="site in uniqueSites" :key="site" :value="site">
+                    {{ site }}
+                  </a-select-option>
+                </a-select>
+                <a-checkbox
+                  v-model:checked="selectAllStores"
+                  style="margin-left: 8px;"
+                >
+                  全选 / 全不选
+                </a-checkbox>
+              </div>
+            </div>
+
+            <div class="stores-grid">
+              <a-checkbox-group v-model:value="formState.allocatedStores" style="width: 100%">
+                <a-row :gutter="[12, 12]">
+                  <a-col v-for="store in filteredStoresList" :key="store.value" :span="12">
+                    <div class="store-item-card" :class="{ 'is-selected': formState.allocatedStores.includes(store.value) }" @click.stop="toggleStoreSelection(store.value)">
+                      <a-checkbox :value="store.value" @click.prevent>
+                        <span class="store-account-name">{{ store.account }}</span>
+                        <span class="store-site-tag">{{ store.site }}</span>
+                      </a-checkbox>
+                    </div>
+                  </a-col>
+                </a-row>
+              </a-checkbox-group>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="um-modal-footer">
@@ -113,6 +173,7 @@ import { PlusOutlined, LoadingOutlined } from '@ant-design/icons-vue';
 import type { UploadChangeParam, UploadProps } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { getRoleList, type Role } from '@/services/roleService';
+import { getEccangStores } from '@/services/eccangService';
 
 import UserPasswordModal from './UserPasswordModal.vue';
 
@@ -131,6 +192,7 @@ const visible = computed({
 const isEdit = ref(false);
 const passwordModalVisible = ref(false);
 const loading = ref(false);
+const originalEmail = ref(''); // 记录编辑模式下原始邮箱（可能是加密值）
 const fileList = ref<UploadProps['fileList']>([]);
 const availableRoles = ref<Role[]>([]);
 
@@ -145,7 +207,95 @@ const formState = reactive({
   lastLogin: '',
   lastLoginId: '',
   active: true,
+  allocatedStores: [] as string[],
 });
+
+const loadingStores = ref(false);
+interface StoreOption {
+  value: string;
+  account: string;
+  site: string;
+}
+const allStoresList = ref<StoreOption[]>([]);
+
+const searchFilters = reactive({
+  account: '',
+  site: undefined as string | undefined,
+});
+
+const uniqueSites = computed(() => {
+  const sites = allStoresList.value.map(s => s.site).filter(Boolean);
+  return Array.from(new Set(sites)).sort();
+});
+
+const filteredStoresList = computed(() => {
+  return allStoresList.value.filter(s => {
+    const matchAccount = !searchFilters.account || s.account.toLowerCase().includes(searchFilters.account.toLowerCase());
+    const matchSite = !searchFilters.site || s.site.toLowerCase() === searchFilters.site.toLowerCase();
+    return matchAccount && matchSite;
+  });
+});
+
+const isEncryptedData = (value: string | undefined): boolean => {
+  if (!value) return false;
+  return value.length > 40 && /^[A-Za-z0-9+/=]+$/.test(value) && !value.includes('@');
+};
+
+const selectAllStores = computed({
+  get: () => {
+    const filtered = filteredStoresList.value;
+    if (filtered.length === 0) return false;
+    return filtered.every(s => formState.allocatedStores.includes(s.value));
+  },
+  set: (checked) => {
+    const filtered = filteredStoresList.value;
+    const currentAllocated = new Set(formState.allocatedStores);
+    if (checked) {
+      filtered.forEach(s => currentAllocated.add(s.value));
+    } else {
+      filtered.forEach(s => currentAllocated.delete(s.value));
+    }
+    formState.allocatedStores = Array.from(currentAllocated);
+  }
+});
+
+const loadStores = async () => {
+  loadingStores.value = true;
+  try {
+    const stores = await getEccangStores();
+    const list: StoreOption[] = [];
+    const seen = new Set<string>();
+    stores.forEach(s => {
+      if (s.accountCounts && Array.isArray(s.accountCounts)) {
+        s.accountCounts.forEach(ac => {
+          const key = `${ac.site}|${ac.userAccount}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({
+              value: key,
+              account: ac.userAccount,
+              site: ac.site,
+            });
+          }
+        });
+      }
+    });
+    allStoresList.value = list;
+  } catch (error) {
+    console.error('Failed to load stores for allocation', error);
+  } finally {
+    loadingStores.value = false;
+  }
+};
+
+const toggleStoreSelection = (value: string) => {
+  const index = formState.allocatedStores.indexOf(value);
+  if (index > -1) {
+    formState.allocatedStores.splice(index, 1);
+  } else {
+    formState.allocatedStores.push(value);
+  }
+};
 
 const fetchRoles = async () => {
   try {
@@ -209,6 +359,10 @@ const handlePasswordSuccess = () => {
 
 watch(() => props.open, (val) => {
   if (val) {
+    // Reset search filters when opening modal
+    searchFilters.account = '';
+    searchFilters.site = undefined;
+
     if (props.record) {
       isEdit.value = true;
       const record = props.record;
@@ -217,12 +371,14 @@ watch(() => props.open, (val) => {
       formState.roleId = record.roles && record.roles.length > 0 ? record.roles[0].id : undefined;
       formState.phone = record.phone;
       formState.email = record.email;
+      originalEmail.value = record.email || ''; // 保存原始邮箱值
       // 编辑模式下显示加密密码：前后三位 + 中间加密
       formState.password = '******'; // Password is not returned by API usually
       formState.createTime = record.createdAt;
       formState.active = record.status === 'active';
       formState.lastLogin = record.lastLoginTime;
       formState.lastLoginId = `${record.lastLoginIp || '-'} ${record.lastLoginLocation ? `(${record.lastLoginLocation})` : ''}`;
+      formState.allocatedStores = record.allocatedStores || [];
     } else {
       isEdit.value = false;
       formState.username = '';
@@ -236,7 +392,9 @@ watch(() => props.open, (val) => {
       formState.lastLogin = '';
       formState.lastLoginId = '';
       formState.active = true;
+      formState.allocatedStores = [];
     }
+    loadStores();
     // Ensure roles are loaded
     if (availableRoles.value.length === 0) {
       fetchRoles();
@@ -273,6 +431,11 @@ const handleOk = () => {
   // 如果编辑模式下密码未修改（仍为占位符），则不提交密码字段
   if (isEdit.value && formState.password.includes('******')) {
     delete (submitData as any).password;
+  }
+
+  // 如果编辑模式下邮箱未修改（仍是加密值），则不提交email字段，避免后端@Email验证失败
+  if (isEdit.value && formState.email === originalEmail.value && isEncryptedData(formState.email)) {
+    delete (submitData as any).email;
   }
 
   emit('ok', submitData);
@@ -401,5 +564,55 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.stores-grid {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.store-item-card {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    border-color: #fb7185;
+    box-shadow: 0 4px 12px rgba(251, 113, 133, 0.08);
+  }
+
+  &.is-selected {
+    border-color: #fb7185;
+    background: linear-gradient(135deg, rgba(251, 113, 133, 0.04) 0%, rgba(251, 113, 133, 0.08) 100%);
+    box-shadow: 0 4px 12px rgba(251, 113, 133, 0.08);
+  }
+}
+
+.store-account-name {
+  font-weight: 500;
+  color: #334155;
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.store-site-tag {
+  font-size: 10px;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 </style>

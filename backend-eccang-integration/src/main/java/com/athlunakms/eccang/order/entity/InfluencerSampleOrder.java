@@ -88,6 +88,15 @@ public class InfluencerSampleOrder {
     @Column(name="cooperation_price", precision=12, scale=2)
     private BigDecimal cooperationPrice;
 
+    @Column(name="is_fba_shipment", nullable=false)
+    private Boolean isFbaShipment = false;
+
+    @Column(name="fba_warehouse_code", length=50)
+    private String fbaWarehouseCode;
+
+    @Column(name="fba_shipping_method", length=50)
+    private String fbaShippingMethod;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -237,6 +246,18 @@ public class InfluencerSampleOrder {
         return this.cooperationPrice;
     }
 
+    public Boolean getIsFbaShipment() {
+        return this.isFbaShipment;
+    }
+
+    public String getFbaWarehouseCode() {
+        return this.fbaWarehouseCode;
+    }
+
+    public String getFbaShippingMethod() {
+        return this.fbaShippingMethod;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -379,6 +400,18 @@ public class InfluencerSampleOrder {
 
     public void setCooperationPrice(BigDecimal cooperationPrice) {
         this.cooperationPrice = cooperationPrice;
+    }
+
+    public void setIsFbaShipment(Boolean isFbaShipment) {
+        this.isFbaShipment = isFbaShipment;
+    }
+
+    public void setFbaWarehouseCode(String fbaWarehouseCode) {
+        this.fbaWarehouseCode = fbaWarehouseCode;
+    }
+
+    public void setFbaShippingMethod(String fbaShippingMethod) {
+        this.fbaShippingMethod = fbaShippingMethod;
     }
 
     public boolean equals(Object o) {

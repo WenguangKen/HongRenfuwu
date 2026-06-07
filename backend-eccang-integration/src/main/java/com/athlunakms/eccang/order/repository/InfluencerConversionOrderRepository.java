@@ -37,5 +37,11 @@ JpaSpecificationExecutor<InfluencerConversionOrder> {
 
     @Query(value="SELECT o.influencerId, COUNT(o) FROM InfluencerConversionOrder o WHERE o.influencerId IN :ids GROUP BY o.influencerId")
     public List<Object[]> countByInfluencerIds(@Param(value="ids") List<Long> var1);
+
+    public Optional<InfluencerConversionOrder> findByEccangOrderId(String eccangOrderId);
+
+    public boolean existsByOrderName(String orderName);
+
+    public boolean existsByEccangOrderId(String eccangOrderId);
 }
 

@@ -59,6 +59,7 @@ public class InfluencerOrderController {
     private final com.athlunakms.eccang.influencer.repository.InfluencerReadOnlyRepository influencerReadOnlyRepository;
     private final com.athlunakms.eccang.influencer.repository.SystemTagReadOnlyRepository systemTagReadOnlyRepository;
     private final org.springframework.web.client.RestTemplate restTemplate;
+    private final com.athlunakms.eccang.order.service.ConversionOrderImportService conversionOrderImportService;
 
     @org.springframework.beans.factory.annotation.Value("${influencer.service.url:http://localhost:8082/influencer-api}")
     private String influencerServiceUrl;
@@ -88,6 +89,45 @@ public class InfluencerOrderController {
         } catch (Exception e) {
             log.error("Failed to bind influencer", e);
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/sample/import-by-id")
+    public ResponseEntity<Map<String, Object>> importSampleOrderById(@RequestBody Map<String, String> request) {
+        String storeIdStr = request.get("storeId");
+        String orderIdentifier = request.get("orderId");
+        if (storeIdStr == null || orderIdentifier == null || orderIdentifier.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "storeId and orderId are required"));
+        }
+        try {
+            Long storeId = Long.parseLong(storeIdStr);
+            EccangOrder order = orderService.syncSingleOrder(storeId, orderIdentifier);
+            java.util.Optional<com.athlunakms.eccang.order.entity.InfluencerSampleOrder> sampleOpt = sampleOrderRepository.findByOrderId(order.getId());
+            if (sampleOpt.isPresent()) {
+                SampleOrderDto dto = createBaseDto(sampleOpt.get(), java.util.Collections.emptyList());
+                return ResponseEntity.ok(Map.of("success", true, "message", "订单导入成功", "data", dto));
+            } else {
+                return ResponseEntity.ok(Map.of("success", true, "message", "订单已同步，但未分类为样品单（未关联到红人）"));
+            }
+        } catch (Exception e) {
+            log.error("Failed to import single order: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "导入失败: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/conversion/import-excel")
+    public ResponseEntity<Map<String, Object>> importConversionOrdersExcel(@RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                                                                           @RequestParam(value = "operatorId", required = false) Long operatorId) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "上传文件不能为空"));
+        }
+        try {
+            Long opId = operatorId != null ? operatorId : 1L;
+            Map<String, Object> result = conversionOrderImportService.importConversionOrders(file, opId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Failed to import conversion orders Excel: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "导入失败: " + e.getMessage()));
         }
     }
 
@@ -1572,6 +1612,10 @@ public class InfluencerOrderController {
         dto.setRecipientAddress(entity.getRecipientAddress());
         dto.setRecipientCountry(entity.getRecipientCountry());
 
+        dto.setIsFbaShipment(entity.getIsFbaShipment());
+        dto.setFbaWarehouseCode(entity.getFbaWarehouseCode());
+        dto.setFbaShippingMethod(entity.getFbaShippingMethod());
+
         // Fill Owner and Contact from InfluencerReadOnly
         if (entity.getInfluencerId() != null && influencerReadOnlyRepository != null) {
             influencerReadOnlyRepository.findById(entity.getInfluencerId()).ifPresent(influencer -> {
@@ -1688,7 +1732,7 @@ public class InfluencerOrderController {
         String image = item.getImageUrl();
         if (image == null || image.isEmpty()) {
             if (item.getEccangVariantId() != null) {
-                image = variantRepository.findByEccangVariantId(item.getEccangVariantId())
+                image = variantRepository.findById(item.getEccangVariantId())
                         .map(com.athlunakms.eccang.product.entity.EccangProductVariant::getImageUrl)
                         .orElse(null);
             }
@@ -1849,7 +1893,7 @@ public class InfluencerOrderController {
         String image = item.getImageUrl();
         if (image == null || image.isEmpty()) {
             if (item.getEccangVariantId() != null) {
-                image = variantRepository.findByEccangVariantId(item.getEccangVariantId())
+                image = variantRepository.findById(item.getEccangVariantId())
                         .map(com.athlunakms.eccang.product.entity.EccangProductVariant::getImageUrl)
                         .orElse(null);
             }

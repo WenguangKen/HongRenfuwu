@@ -4,12 +4,12 @@
     <a-card :bordered="false" class="filter-card glass-card" :body-style="{ padding: '16px 20px' }">
       <a-form :model="filterForm" layout="vertical">
         <a-row :gutter="[16, 16]">
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="5">
             <a-form-item label="用户名">
               <a-input v-model:value="filterForm.username" placeholder="请输入用户名" allow-clear />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="5">
             <a-form-item label="角色">
               <a-select v-model:value="filterForm.role" placeholder="全部" allow-clear>
                 <a-select-option value="Admin">管理员</a-select-option>
@@ -17,17 +17,12 @@
               </a-select>
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
-            <a-form-item label="电话">
-              <a-input v-model:value="filterForm.phone" placeholder="请输入电话" allow-clear />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="5">
             <a-form-item label="邮箱">
               <a-input v-model:value="filterForm.email" placeholder="请输入邮箱" allow-clear />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12" :md="8" :lg="4">
+          <a-col :xs="24" :sm="12" :md="8" :lg="5">
             <a-form-item label="状态">
               <a-select v-model:value="filterForm.status" placeholder="全部" allow-clear>
                 <a-select-option value="active">启用</a-select-option>
@@ -96,6 +91,23 @@
             <a-tag :color="record.roles && record.roles.length > 0 && record.roles[0].name === 'Admin' ? 'rose' : 'orange'" class="status-tag">
               {{ record.roles && record.roles.length > 0 ? record.roles[0].name : '普通用户' }}
             </a-tag>
+          </template>
+
+          <template v-else-if="column.key === 'allocatedStores'">
+            <div class="allocated-stores-cell" style="max-height: 80px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0;">
+              <template v-if="record.allocatedStores && record.allocatedStores.length > 0">
+                <div 
+                  v-for="store in record.allocatedStores" 
+                  :key="store" 
+                  class="store-tag-mini"
+                  style="display: inline-flex; align-items: center; gap: 4px; background: rgba(251, 113, 133, 0.06); border: 1px solid rgba(251, 113, 133, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 11px;"
+                >
+                  <span style="font-weight: 600; color: #1e293b;">{{ store.split('|')[1] || store }}</span>
+                  <span style="font-size: 9px; background: rgba(251, 113, 133, 0.12); color: #fb7185; padding: 0 4px; border-radius: 2px; text-transform: uppercase; font-weight: bold;">{{ store.split('|')[0] }}</span>
+                </div>
+              </template>
+              <span v-else style="color: #94a3b8; font-size: 12px; font-style: italic;">未分配</span>
+            </div>
           </template>
 
           <template v-else-if="column.key === 'email'">
@@ -219,7 +231,6 @@ const pagination = reactive({
 const filterForm = reactive({
   username: '',
   role: undefined as string | undefined,
-  phone: '',
   email: '',
   status: undefined as string | undefined,
 });
@@ -228,7 +239,7 @@ const filterForm = reactive({
 const columns: TableColumnsType = [
   { title: '用户信息', dataIndex: 'username', key: 'username', width: 200, fixed: 'left' },
   { title: '角色', key: 'role', width: 120, align: 'center' },
-  { title: '电话', dataIndex: 'phone', key: 'phone', width: 130 },
+  { title: '已分配店铺', dataIndex: 'allocatedStores', key: 'allocatedStores', width: 220 },
   { title: '邮箱', dataIndex: 'email', key: 'email', width: 200 },
   { title: '时间', key: 'time', width: 200, align: 'center' },
   { title: '最近登录', key: 'loginInfo', width: 200, align: 'left' },
@@ -259,7 +270,6 @@ const fetchUsers = async () => {
     
     if (filterForm.username) params.username = filterForm.username;
     if (filterForm.role) params.role = filterForm.role;
-    if (filterForm.phone) params.phone = filterForm.phone;
     if (filterForm.email) params.email = filterForm.email;
     
     const res = await getUserList(params);
@@ -349,7 +359,8 @@ const handleOk = async (formData: any) => {
         email: formData.email,
         phone: formData.phone,
         roleIds: formData.roleIds || [],
-        avatarUrl: formData.avatar
+        avatarUrl: formData.avatar,
+        allocatedStores: formData.allocatedStores || []
       });
       message.success('更新成功');
     } else {
@@ -359,7 +370,8 @@ const handleOk = async (formData: any) => {
         password: formData.password,
         phone: formData.phone,
         roleIds: formData.roleIds || [],
-        avatarUrl: formData.avatar
+        avatarUrl: formData.avatar,
+        allocatedStores: formData.allocatedStores || []
       });
       message.success('创建成功');
     }

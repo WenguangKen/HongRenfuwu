@@ -171,6 +171,12 @@ public class EccangOrder {
     private LocalDateTime estimatedDeliveryAt;
     @Column(name="is_draft")
     private Boolean isDraft = false;
+    @Column(name="is_fba_shipment", nullable=false)
+    private Boolean isFbaShipment = false;
+    @Column(name="fba_warehouse_code", length=50)
+    private String fbaWarehouseCode;
+    @Column(name="fba_shipping_method", length=50)
+    private String fbaShippingMethod;
 
     @PrePersist
     public void onCreate() {
@@ -497,6 +503,18 @@ public class EccangOrder {
         return this.isDraft;
     }
 
+    public Boolean getIsFbaShipment() {
+        return this.isFbaShipment;
+    }
+
+    public String getFbaWarehouseCode() {
+        return this.fbaWarehouseCode;
+    }
+
+    public String getFbaShippingMethod() {
+        return this.fbaShippingMethod;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -807,6 +825,18 @@ public class EccangOrder {
 
     public void setIsDraft(Boolean isDraft) {
         this.isDraft = isDraft;
+    }
+
+    public void setIsFbaShipment(Boolean isFbaShipment) {
+        this.isFbaShipment = isFbaShipment;
+    }
+
+    public void setFbaWarehouseCode(String fbaWarehouseCode) {
+        this.fbaWarehouseCode = fbaWarehouseCode;
+    }
+
+    public void setFbaShippingMethod(String fbaShippingMethod) {
+        this.fbaShippingMethod = fbaShippingMethod;
     }
 
     public boolean equals(Object o) {

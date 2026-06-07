@@ -14,6 +14,10 @@ export interface ProductItem {
   name: string;
   spu?: string;
   asin?: string;
+  parentAsin?: string;
+  displayAsin?: string;
+  asinTooltip?: string;
+  hasMultipleAsins?: boolean;
   shopifyId?: string;
   sku: string;
   price: string;
@@ -32,5 +36,5 @@ export interface ProductItem {
   platform?: string;
   storeId?: number;
   variants?: any[]; // Allow variants for filtering logic
-  [extra: string]: unknown;
+  [extra: string]: any;
 }

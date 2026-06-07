@@ -36,6 +36,12 @@ public class InfluencerSampleOrder {
     private LocalDateTime orderCreatedAt;
     @Column(name="created_at")
     private LocalDateTime createdAt;
+    @Column(name="is_fba_shipment")
+    private Boolean isFbaShipment = false;
+    @Column(name="fba_warehouse_code")
+    private String fbaWarehouseCode;
+    @Column(name="fba_shipping_method")
+    private String fbaShippingMethod;
 
     public Long getId() {
         return this.id;
@@ -85,6 +91,18 @@ public class InfluencerSampleOrder {
         return this.createdAt;
     }
 
+    public Boolean getIsFbaShipment() {
+        return this.isFbaShipment;
+    }
+
+    public String getFbaWarehouseCode() {
+        return this.fbaWarehouseCode;
+    }
+
+    public String getFbaShippingMethod() {
+        return this.fbaShippingMethod;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -131,6 +149,18 @@ public class InfluencerSampleOrder {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public void setIsFbaShipment(Boolean isFbaShipment) {
+        this.isFbaShipment = isFbaShipment;
+    }
+
+    public void setFbaWarehouseCode(String fbaWarehouseCode) {
+        this.fbaWarehouseCode = fbaWarehouseCode;
+    }
+
+    public void setFbaShippingMethod(String fbaShippingMethod) {
+        this.fbaShippingMethod = fbaShippingMethod;
     }
 
     public boolean equals(Object o) {

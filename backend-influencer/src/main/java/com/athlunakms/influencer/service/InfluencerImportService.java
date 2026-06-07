@@ -1,6 +1,6 @@
 package com.athlunakms.influencer.service;
 
-import com.athlunakms.influencer.client.ShopifyIntegrationClient;
+import com.athlunakms.influencer.client.EccangIntegrationClient;
 import com.athlunakms.influencer.client.UserServiceClient;
 import com.athlunakms.influencer.entity.ImportJob;
 import com.athlunakms.influencer.entity.Influencer;
@@ -51,7 +51,7 @@ public class InfluencerImportService {
     private final InfluencerPaymentInfoRepository paymentInfoRepository;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
-    private final ShopifyIntegrationClient shopifyIntegrationClient;
+    private final EccangIntegrationClient eccangIntegrationClient;
     private final InfluencerCooperationService cooperationService;
     private final ImportJobRepository importJobRepository;
     private final StorageServiceFactory storageServiceFactory;
@@ -972,11 +972,11 @@ public class InfluencerImportService {
     }
 
     private void bindOrder(Influencer influencer, String orderNo) {
-        if (!this.shopifyIntegrationClient.checkOrderExists(orderNo)) {
+        if (!this.eccangIntegrationClient.checkOrderExists(orderNo)) {
             throw new RuntimeException("Order " + orderNo + " not found");
         }
         try {
-            this.shopifyIntegrationClient.bindInfluencer(orderNo, influencer.getId(), influencer.getRealName());
+            this.eccangIntegrationClient.bindInfluencer(orderNo, influencer.getId(), influencer.getRealName());
         } catch (Exception e) {
             throw new RuntimeException("Failed to bind order: " + e.getMessage());
         }
@@ -1105,7 +1105,7 @@ public class InfluencerImportService {
 
     public InfluencerImportService(InfluencerRepository influencerRepository,
             InfluencerAddressRepository addressRepository, InfluencerPaymentInfoRepository paymentInfoRepository,
-            JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, ShopifyIntegrationClient shopifyIntegrationClient,
+            JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, EccangIntegrationClient eccangIntegrationClient,
             InfluencerCooperationService cooperationService, ImportJobRepository importJobRepository,
             StorageServiceFactory storageServiceFactory, UserServiceClient userServiceClient,
             InfluencerLogService logService) {
@@ -1114,7 +1114,7 @@ public class InfluencerImportService {
         this.paymentInfoRepository = paymentInfoRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
-        this.shopifyIntegrationClient = shopifyIntegrationClient;
+        this.eccangIntegrationClient = eccangIntegrationClient;
         this.cooperationService = cooperationService;
         this.importJobRepository = importJobRepository;
         this.storageServiceFactory = storageServiceFactory;

@@ -29,7 +29,7 @@ app:
     public-url-prefix: http://localhost:9000/influencer-media
 
 services:
-  shopify-integration:
+  eccang-integration:
     url: http://localhost:8081
   user:
     url: http://localhost:8080

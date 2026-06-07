@@ -3,8 +3,11 @@ package com.athlunakms.common.config;
 import com.athlunakms.common.exception.BusinessException;
 import com.athlunakms.common.exception.ErrorCode;
 import com.athlunakms.role.entity.Role;
+import com.athlunakms.role.entity.UserRole;
 import com.athlunakms.role.repository.RoleRepository;
+import com.athlunakms.role.repository.UserRoleRepository;
 import com.athlunakms.user.dto.UserCreateRequest;
+import com.athlunakms.user.entity.User;
 import com.athlunakms.user.repository.UserRepository;
 import com.athlunakms.user.service.UserService;
 import java.nio.charset.StandardCharsets;
@@ -22,8 +25,11 @@ import org.springframework.stereotype.Component;
 public class DataInitializer
 implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
+    private static final String SUPER_ADMIN_EMAIL = "wenguangfeifan@outlook.com";
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
     private final UserService userService;
     @Value(value="${app.initial-admin.enabled:true}")
     private boolean initialAdminEnabled;
@@ -42,13 +48,14 @@ implements CommandLineRunner {
             return;
         }
         try {
-            if (this.checkAdminUserExists()) {
-                log.info("\u7ba1\u7406\u5458\u8d26\u53f7\u5df2\u5b58\u5728\uff0c\u8df3\u8fc7\u521d\u59cb\u5316");
-                return;
-            }
             Role adminRole = this.roleRepository.findByName(this.adminRoleName).orElse(null);
             if (adminRole == null) {
                 log.warn("\u8d85\u7ea7\u7ba1\u7406\u5458\u89d2\u8272\u4e0d\u5b58\u5728\uff0c\u8bf7\u5148\u6267\u884c\u6570\u636e\u5e93\u8fc1\u79fb\u811a\u672c V4__seed_initial_data.sql");
+                return;
+            }
+            this.ensureSuperAdminForEmail(SUPER_ADMIN_EMAIL, adminRole.getId());
+            if (this.checkAdminUserExists()) {
+                log.info("\u7ba1\u7406\u5458\u8d26\u53f7\u5df2\u5b58\u5728\uff0c\u8df3\u8fc7\u521d\u59cb\u5316");
                 return;
             }
             this.createAdminUser(adminRole.getId());
@@ -105,6 +112,26 @@ implements CommandLineRunner {
         }
     }
 
+    private void ensureSuperAdminForEmail(String email, Long adminRoleId) {
+        try {
+            String emailHash = this.hashEmail(email);
+            User user = this.userRepository.findByEmailHash(emailHash).orElse(null);
+            if (user == null) {
+                log.info("\u672a\u627e\u5230\u90ae\u7bb1 {} \u5bf9\u5e94\u7528\u6237\uff0c\u8df3\u8fc7\u8d85\u7ea7\u7ba1\u7406\u5458\u6388\u6743", (Object)email);
+                return;
+            }
+            if (!this.userRoleRepository.existsByUserIdAndRoleId(user.getId(), adminRoleId)) {
+                UserRole userRole = new UserRole();
+                userRole.setUserId(user.getId());
+                userRole.setRoleId(adminRoleId);
+                this.userRoleRepository.save(userRole);
+                log.info("\u5df2\u4e3a\u7528\u6237 {} ({}) \u6388\u4e88\u8d85\u7ea7\u7ba1\u7406\u5458\u89d2\u8272", (Object)user.getUsername(), (Object)email);
+            }
+        } catch (Exception e) {
+            log.warn("\u8d85\u7ea7\u7ba1\u7406\u5458\u6388\u6743\u68c0\u67e5\u5931\u8d25: {}", (Object)e.getMessage());
+        }
+    }
+
     private String hashEmail(String email) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -124,9 +151,11 @@ implements CommandLineRunner {
         }
     }
 
-    public DataInitializer(UserRepository userRepository, RoleRepository roleRepository, UserService userService) {
+    public DataInitializer(UserRepository userRepository, RoleRepository roleRepository,
+            UserRoleRepository userRoleRepository, UserService userService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.userRoleRepository = userRoleRepository;
         this.userService = userService;
     }
 }

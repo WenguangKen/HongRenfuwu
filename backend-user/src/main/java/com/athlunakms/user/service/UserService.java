@@ -13,7 +13,9 @@ import com.athlunakms.user.dto.UserCreateRequest;
 import com.athlunakms.user.dto.UserResponse;
 import com.athlunakms.user.dto.UserUpdateRequest;
 import com.athlunakms.user.entity.User;
+import com.athlunakms.user.entity.UserStoreAllocation;
 import com.athlunakms.user.repository.UserRepository;
+import com.athlunakms.user.repository.UserStoreAllocationRepository;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import java.io.Serializable;
@@ -44,6 +46,7 @@ public class UserService {
     private final BCryptService bcryptService;
     private final AESEncryptionService encryptionService;
     private final SessionService sessionService;
+    private final UserStoreAllocationRepository userStoreAllocationRepository;
 
     @Transactional
     public UserResponse createUser(UserCreateRequest request) {
@@ -64,6 +67,9 @@ public class UserService {
         user = this.userRepository.save(user);
         if (request.getRoleIds() != null && !request.getRoleIds().isEmpty()) {
             this.assignRoles(user.getId(), request.getRoleIds());
+        }
+        if (request.getAllocatedStores() != null) {
+            this.saveUserStoreAllocations(user.getId(), request.getAllocatedStores());
         }
         log.info("\u521b\u5efa\u7528\u6237: userId={}, email={}", (Object)user.getId(), (Object)request.getEmail());
         return this.convertToResponse(user);
@@ -97,6 +103,10 @@ public class UserService {
                 this.userRoleRepository.deleteByUserId(userId);
                 this.assignRoles(userId, request.getRoleIds());
             }
+        }
+        if (request.getAllocatedStores() != null) {
+            this.userStoreAllocationRepository.deleteByUserId(userId);
+            this.saveUserStoreAllocations(userId, request.getAllocatedStores());
         }
         user = this.userRepository.save(user);
         log.info("\u66f4\u65b0\u7528\u6237: userId={}", userId);
@@ -198,6 +208,11 @@ public class UserService {
             return roleInfo;
         }).collect(Collectors.toList());
         response.setRoles(roles);
+        List<UserStoreAllocation> allocations = this.userStoreAllocationRepository.findByUserId(user.getId());
+        List<String> allocatedStores = allocations.stream()
+            .map(a -> a.getSiteCode() + "|" + a.getPlatformAccount())
+            .collect(Collectors.toList());
+        response.setAllocatedStores(allocatedStores);
         return response;
     }
 
@@ -271,13 +286,38 @@ public class UserService {
         }
     }
 
-    public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, BCryptService bcryptService, AESEncryptionService encryptionService, SessionService sessionService) {
+    private void saveUserStoreAllocations(Long userId, List<String> allocatedStores) {
+        if (allocatedStores == null || allocatedStores.isEmpty()) {
+            return;
+        }
+        List<UserStoreAllocation> allocations = new ArrayList<>();
+        for (String storeStr : allocatedStores) {
+            if (storeStr != null && storeStr.contains("|")) {
+                int index = storeStr.indexOf('|');
+                String siteCode = storeStr.substring(0, index).trim();
+                String platformAccount = storeStr.substring(index + 1).trim();
+                if (!siteCode.isEmpty() && !platformAccount.isEmpty()) {
+                    UserStoreAllocation allocation = new UserStoreAllocation();
+                    allocation.setUserId(userId);
+                    allocation.setSiteCode(siteCode);
+                    allocation.setPlatformAccount(platformAccount);
+                    allocations.add(allocation);
+                }
+            }
+        }
+        if (!allocations.isEmpty()) {
+            this.userStoreAllocationRepository.saveAll(allocations);
+        }
+    }
+
+    public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, BCryptService bcryptService, AESEncryptionService encryptionService, SessionService sessionService, UserStoreAllocationRepository userStoreAllocationRepository) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
         this.bcryptService = bcryptService;
         this.encryptionService = encryptionService;
         this.sessionService = sessionService;
+        this.userStoreAllocationRepository = userStoreAllocationRepository;
     }
 }
 

@@ -74,6 +74,14 @@ public class InfluencerConversionOrder {
     private LocalDateTime estimatedDeliveryAt;
     @Column(name="customer_email")
     private String customerEmail;
+    @Column(name="imported_handle", length=100)
+    private String importedHandle;
+    @Column(name="is_imported", nullable=false)
+    private Boolean isImported = false;
+    @Column(name="import_source", length=50)
+    private String importSource;
+    @Column(name="import_batch_no", length=50)
+    private String importBatchNo;
     @Column(name="processed_at")
     private LocalDateTime processedAt;
     @Column(name="fulfillment_display_status", length=100)
@@ -213,6 +221,22 @@ public class InfluencerConversionOrder {
 
     public String getCustomerEmail() {
         return this.customerEmail;
+    }
+
+    public String getImportedHandle() {
+        return this.importedHandle;
+    }
+
+    public Boolean getIsImported() {
+        return this.isImported;
+    }
+
+    public String getImportSource() {
+        return this.importSource;
+    }
+
+    public String getImportBatchNo() {
+        return this.importBatchNo;
     }
 
     public LocalDateTime getProcessedAt() {
@@ -373,6 +397,22 @@ public class InfluencerConversionOrder {
 
     public void setCustomerEmail(String customerEmail) {
         this.customerEmail = customerEmail;
+    }
+
+    public void setImportedHandle(String importedHandle) {
+        this.importedHandle = importedHandle;
+    }
+
+    public void setIsImported(Boolean isImported) {
+        this.isImported = isImported;
+    }
+
+    public void setImportSource(String importSource) {
+        this.importSource = importSource;
+    }
+
+    public void setImportBatchNo(String importBatchNo) {
+        this.importBatchNo = importBatchNo;
     }
 
     public void setProcessedAt(LocalDateTime processedAt) {

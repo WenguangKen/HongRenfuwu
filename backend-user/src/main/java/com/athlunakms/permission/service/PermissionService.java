@@ -3,10 +3,12 @@ package com.athlunakms.permission.service;
 import com.athlunakms.permission.dto.PermissionResponse;
 import com.athlunakms.permission.entity.Permission;
 import com.athlunakms.permission.repository.PermissionRepository;
+import com.athlunakms.role.entity.Role;
+import com.athlunakms.role.repository.RoleRepository;
 import com.athlunakms.role.repository.UserRoleRepository;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -21,8 +23,10 @@ public class PermissionService {
     private static final Logger log = LoggerFactory.getLogger(PermissionService.class);
     private final PermissionRepository permissionRepository;
     private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private static final String PERMISSION_CACHE_PREFIX = "user_permissions:";
+    private static final String SUPER_ADMIN_ROLE_NAME = "\u8d85\u7ea7\u7ba1\u7406\u5458";
     private static final long CACHE_TTL = 30L;
 
     @Transactional(readOnly = true)
@@ -32,12 +36,17 @@ public class PermissionService {
         if (cached != null) {
             return cached;
         }
-        List<Permission> permissions = this.permissionRepository.findPermissionsByUserId(userId);
+        List<Permission> permissions = this.isSuperAdmin(userId)
+                ? this.permissionRepository.findAll()
+                : this.permissionRepository.findPermissionsByUserId(userId);
         List<String> pagePermissions = permissions.stream().filter(p -> p.getType() == Permission.PermissionType.page)
                 .map(Permission::getPermissionKey).collect(Collectors.toList());
         List<String> operationPermissions = permissions.stream().filter(
                 p -> p.getType() == Permission.PermissionType.tab || p.getType() == Permission.PermissionType.operation)
                 .map(Permission::getPermissionKey).collect(Collectors.toList());
+        if (this.isSuperAdmin(userId) && !operationPermissions.contains("*")) {
+            operationPermissions.add("*");
+        }
         PermissionResponse response = new PermissionResponse();
         response.setPagePermissions(pagePermissions);
         response.setOperationPermissions(operationPermissions);
@@ -81,8 +90,19 @@ public class PermissionService {
             allPermissions.addAll(cached.getOperationPermissions());
             return allPermissions;
         }
-        List<Permission> permissions = this.permissionRepository.findPermissionsByUserId(userId);
+        List<Permission> permissions = this.isSuperAdmin(userId)
+                ? this.permissionRepository.findAll()
+                : this.permissionRepository.findPermissionsByUserId(userId);
         return permissions.stream().map(Permission::getPermissionKey).collect(Collectors.toList());
+    }
+
+    private boolean isSuperAdmin(Long userId) {
+        return this.userRoleRepository.findRoleIdsByUserId(userId).stream()
+                .map(this.roleRepository::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(Role::getName)
+                .anyMatch(SUPER_ADMIN_ROLE_NAME::equals);
     }
 
     private PermissionResponse.PermissionInfo convertToInfo(Permission permission) {
@@ -97,9 +117,10 @@ public class PermissionService {
     }
 
     public PermissionService(PermissionRepository permissionRepository, UserRoleRepository userRoleRepository,
-            RedisTemplate<String, Object> redisTemplate) {
+            RoleRepository roleRepository, RedisTemplate<String, Object> redisTemplate) {
         this.permissionRepository = permissionRepository;
         this.userRoleRepository = userRoleRepository;
+        this.roleRepository = roleRepository;
         this.redisTemplate = redisTemplate;
     }
 }

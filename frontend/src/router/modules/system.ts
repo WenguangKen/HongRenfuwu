@@ -44,12 +44,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '权限列表', pageKey: 'system.permission' }
   },
   {
-    path: 'system/webhook',
-    name: 'system-webhook',
-    component: () => import('@/views/system/WebhookSetting.vue'),
-    meta: { title: 'Webhook设置', pageKey: 'system.webhook' }
-  },
-  {
     path: 'system/storage',
     name: 'system-storage',
     component: () => import('@/views/system/StorageSetting.vue'),
