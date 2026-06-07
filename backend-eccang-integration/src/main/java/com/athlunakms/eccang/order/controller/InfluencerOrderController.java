@@ -49,6 +49,7 @@ public class InfluencerOrderController {
     private final InfluencerConversionOrderRepository conversionOrderRepository;
     private final EccangOrderRepository orderRepository;
     private final EccangOrderService orderService;
+    private final com.athlunakms.eccang.order.service.OrderClassificationService classificationService;
     private final com.athlunakms.eccang.store.repository.EccangStoreRepository storeRepository;
     private final com.athlunakms.eccang.order.repository.OrderLineItemRepository lineItemRepository;
 
@@ -102,12 +103,18 @@ public class InfluencerOrderController {
         try {
             Long storeId = Long.parseLong(storeIdStr);
             EccangOrder order = orderService.syncSingleOrder(storeId, orderIdentifier);
+            
+            // 强行将通过单号导入的订单归类为样品单（如果它还不是业务订单）
+            List<com.athlunakms.eccang.order.entity.OrderLineItem> lineItems = lineItemRepository.findByOrderId(order.getId());
+            classificationService.manualBindInfluencer(order, lineItems);
+            
             java.util.Optional<com.athlunakms.eccang.order.entity.InfluencerSampleOrder> sampleOpt = sampleOrderRepository.findByOrderId(order.getId());
             if (sampleOpt.isPresent()) {
-                SampleOrderDto dto = createBaseDto(sampleOpt.get(), java.util.Collections.emptyList());
+                List<com.athlunakms.eccang.order.entity.InfluencerSampleOrderItem> items = sampleItemRepository.findBySampleOrderId(sampleOpt.get().getId());
+                SampleOrderDto dto = createBaseDto(sampleOpt.get(), items);
                 return ResponseEntity.ok(Map.of("success", true, "message", "订单导入成功", "data", dto));
             } else {
-                return ResponseEntity.ok(Map.of("success", true, "message", "订单已同步，但未分类为样品单（未关联到红人）"));
+                return ResponseEntity.ok(Map.of("success", true, "message", "订单已同步，但未分类为样品单（可能已被分类为转化单）"));
             }
         } catch (Exception e) {
             log.error("Failed to import single order: {}", e.getMessage(), e);
