@@ -84,6 +84,8 @@ declare module 'vue' {
     BindInfluencerModal: typeof import('./src/components/order/BindInfluencerModal.vue')['default']
     BrowserPreviewModal: typeof import('./src/components/common/BrowserPreviewModal.vue')['default']
     ChangePasswordModal: typeof import('./src/components/system/ChangePasswordModal.vue')['default']
+    CheckCircleOutlined: typeof import('@ant-design/icons-vue')['CheckCircleOutlined']
+    CloseCircleOutlined: typeof import('@ant-design/icons-vue')['CloseCircleOutlined']
     CollectionSelectorModal: typeof import('./src/components/order/CollectionSelectorModal.vue')['default']
     CommissionAuditModal: typeof import('./src/components/commission/CommissionAuditModal.vue')['default']
     CommissionLogModal: typeof import('./src/components/commission/CommissionLogModal.vue')['default']
